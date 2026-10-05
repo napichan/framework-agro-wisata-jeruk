@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   IconInstagram,
   IconLocation,
@@ -60,11 +61,11 @@ export function ReservationCta() {
   );
 }
 
-const NAV_WISATA = [
-  "Beranda Utama",
-  "Profil Kebun Selorejo",
-  "Fitur AI Scanner Budidaya",
-  "Paket Tiket & Harga",
+const NAV_WISATA: { label: string; href: string }[] = [
+  { label: "Beranda Utama", href: "/" },
+  { label: "Profil Kebun Selorejo", href: "/tentang-wisata" },
+  { label: "Fitur AI Scanner Budidaya", href: "/#teknologi" },
+  { label: "Paket Tiket & Harga", href: "/#katalog" },
 ];
 
 const PROGRAM = [
@@ -123,13 +124,13 @@ export function Footer() {
             </p>
             <ul className="mt-4 space-y-2.5">
               {NAV_WISATA.map((item) => (
-                <li key={item}>
-                  <a
-                    href="#"
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
                     className="text-[11.5px] text-neutral-500 transition hover:text-grove-600"
                   >
-                    {item}
-                  </a>
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
