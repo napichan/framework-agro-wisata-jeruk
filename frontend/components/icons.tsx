@@ -337,6 +337,88 @@ export function AppleBadge(props: IconProps) {
 }
 
 /* ============ Ilustrasi ============ */
+export function IconLeaf(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z" />
+      <path d="M5 19c3-5 7-8 11-9" />
+    </svg>
+  );
+}
+
+export function IconGraduationCap(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M2 9l10-4 10 4-10 4L2 9z" />
+      <path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+      <path d="M22 9v5" />
+    </svg>
+  );
+}
+
+export function IconCup(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M4 8h13v6a5 5 0 01-5 5H9a5 5 0 01-5-5V8z" />
+      <path d="M17 9h2a2.5 2.5 0 010 5h-2" />
+      <path d="M7 4v2M11 4v2M15 4v2" />
+    </svg>
+  );
+}
+
+export function IconAccessibility(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <circle cx="12" cy="4.5" r="2" />
+      <path d="M4 8.5l6 1v4l-3 7M20 8.5l-6 1" />
+      <path d="M13.5 13.5l3.5 7" />
+    </svg>
+  );
+}
+
+export function IconMountain(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M3 19h18L14 6l-4 7-2.5-3.5L3 19z" />
+    </svg>
+  );
+}
+
+export function IconTree(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M12 22v-5" />
+      <path d="M12 17a6 6 0 01-4-10.5A6 6 0 0118 8a4.5 4.5 0 01-6 9z" />
+    </svg>
+  );
+}
+
+export function IconFruit(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <circle cx="12" cy="14" r="7" />
+      <path d="M12 7c0-2 1-4 3-5M12 7c-.4-1.6-1.6-2.6-3.2-2.8" />
+    </svg>
+  );
+}
+
+export function IconCalendar(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M8 3v4M16 3v4M3 10h18" />
+    </svg>
+  );
+}
+
+export function IconFacebook(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M14 8.5V7a1 1 0 011-1h2V3h-3a4 4 0 00-4 4v1.5H8V12h2v9h4v-9h2.3l.7-3.5H14z" />
+    </svg>
+  );
+}
+
 export function MapIllustration({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 560 400" className={className} role="img" aria-label="Peta lokasi Agro Jeruk Selorejo, Dusun Krajan, Dau, Malang">
