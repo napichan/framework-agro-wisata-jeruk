@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { IconChevronRight } from "./icons";
 
 export function ScannerSection() {
@@ -39,15 +40,14 @@ export function ScannerSection() {
                   </div>
 
                   {/* viewfinder */}
-                  <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-[#4a3b2c] via-[#5a4634] to-[#3a2f26]">
-                    {/* gunung blur (background kamera) */}
-                    <div
-                      aria-hidden="true"
-                      className="absolute inset-0 opacity-40"
-                      style={{
-                        background:
-                          "radial-gradient(120% 60% at 50% 110%, #6b5a3e 0%, transparent 60%)",
-                      }}
+                  <div className="relative aspect-[3/4] overflow-hidden">
+                    {/* foto kebun sebagai output kamera */}
+                    <Image
+                      src="/images/kebun-jeruk.jpg"
+                      alt="Tampilan kamera aplikasi memindai pohon jeruk"
+                      fill
+                      sizes="280px"
+                      className="object-cover"
                     />
                     {/* bounding box scan */}
                     <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2">

@@ -1,8 +1,8 @@
+import Image from "next/image";
 import {
   AppleBadge,
   GooglePlayBadge,
   IconStar,
-  OrchadIllustration,
 } from "./icons";
 
 export function Hero() {
@@ -127,7 +127,21 @@ export function Hero() {
           </div>
 
           <div className="relative overflow-hidden rounded-3xl border border-neutral-100 bg-white shadow-xl shadow-neutral-900/10">
-            <OrchadIllustration className="h-[320px] w-full sm:h-[360px]" />
+            <div className="relative h-[320px] w-full sm:h-[360px]">
+              <Image
+                src="/images/pegang-jeruk.jpg"
+                alt="Petani memegang hasil panen jeruk di Kebun Jeruk Selorejo"
+                fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+                priority
+              />
+              {/* gradasi agar chip kamera terbaca */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/35 to-transparent"
+              />
+            </div>
             {/* chip kamera */}
             <span className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[10px] font-semibold text-white backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-grove-300" />

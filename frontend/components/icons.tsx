@@ -337,91 +337,6 @@ export function AppleBadge(props: IconProps) {
 }
 
 /* ============ Ilustrasi ============ */
-
-export function OrchadIllustration({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 640 460" className={className} role="img" aria-label="Ilustrasi kebun jeruk Selorejo dengan pohon-pohon berbuah">
-      <defs>
-        <linearGradient id="orch-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#EAF6EC" />
-          <stop offset="1" stopColor="#CFE8D2" />
-        </linearGradient>
-        <linearGradient id="orch-ground" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3D8B48" />
-          <stop offset="1" stopColor="#25592E" />
-        </linearGradient>
-        <linearGradient id="orch-orange" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFC07A" />
-          <stop offset="1" stopColor="#F96B1C" />
-        </linearGradient>
-      </defs>
-      <rect width="640" height="460" fill="url(#orch-sky)" />
-      {/* awan */}
-      <g fill="#FFFFFF" opacity="0.85">
-        <ellipse cx="110" cy="66" rx="46" ry="15" />
-        <ellipse cx="150" cy="52" rx="34" ry="12" />
-        <ellipse cx="470" cy="46" rx="54" ry="16" />
-        <ellipse cx="520" cy="60" rx="38" ry="12" />
-      </g>
-      {/* bukit jauh */}
-      <path d="M0 236c90-52 176-72 258-50 92 24 170 12 244-26 50-26 100-32 138-18v92H0v2z" fill="#8FBF97" opacity="0.55" />
-      {/* barisan pohon belakang */}
-      <g>
-        {[40, 130, 220, 310, 400, 490, 580].map((x) => (
-          <g key={x} transform={`translate(${x} 190)`}>
-            <rect x="-4" y="46" width="8" height="40" rx="3" fill="#1D4726" />
-            <circle cx="0" cy="30" r="38" fill="#2C6F36" />
-            <circle cx="-22" cy="44" r="24" fill="#357A40" />
-            <circle cx="22" cy="44" r="24" fill="#357A40" />
-            <circle cx="-14" cy="18" r="5" fill="#FFA473" />
-            <circle cx="12" cy="30" r="5" fill="#FFA473" />
-            <circle cx="-2" cy="48" r="5" fill="#FFA473" />
-          </g>
-        ))}
-      </g>
-      {/* rumput */}
-      <rect y="278" width="640" height="182" fill="url(#orch-ground)" />
-      <g stroke="#FFFFFF" strokeOpacity="0.14" strokeWidth="2" strokeLinecap="round">
-        {[30, 90, 160, 240, 330, 420, 520, 600].map((x) => (
-          <path key={x} d={`M${x} 320c2-9 5-14 8-18M${x + 14} 322c-1-8-3-13-6-17`} fill="none" />
-        ))}
-      </g>
-      {/* pohon utama depan */}
-      <g transform="translate(320 300)">
-        <path d="M-6 0c-2-22-1-40 0-58 1-16 5-28 6-32 1 4 5 16 6 32 1 18 2 36 0 58h-12z" fill="#173920" />
-        <g>
-          <circle cx="0" cy="-96" r="62" fill="#2C6F36" />
-          <circle cx="-46" cy="-70" r="40" fill="#357A40" />
-          <circle cx="46" cy="-70" r="40" fill="#357A40" />
-          <circle cx="0" cy="-48" r="34" fill="#3D8B48" />
-        </g>
-        <g>
-          <circle cx="-40" cy="-92" r="11" fill="url(#orch-orange)" />
-          <circle cx="-14" cy="-116" r="10" fill="url(#orch-orange)" />
-          <circle cx="24" cy="-104" r="12" fill="url(#orch-orange)" />
-          <circle cx="46" cy="-72" r="10" fill="url(#orch-orange)" />
-          <circle cx="-2" cy="-64" r="12" fill="url(#orch-orange)" />
-          <circle cx="-58" cy="-58" r="9" fill="url(#orch-orange)" />
-          <circle cx="20" cy="-44" r="9" fill="url(#orch-orange)" />
-        </g>
-        {[-40, -14, 24, -2, 46].map((cx) => (
-          <circle key={cx} cx={cx} cy={cx === 24 ? -104 : cx === 46 ? -72 : cx === -14 ? -116 : cx === -40 ? -92 : -64} r="3" fill="#FFDDB8" opacity="0.9" />
-        ))}
-      </g>
-      {/* jeruk jatuh */}
-      <circle cx="188" cy="336" r="12" fill="url(#orch-orange)" />
-      <circle cx="452" cy="352" r="10" fill="url(#orch-orange)" />
-      <ellipse cx="188" cy="350" rx="14" ry="4" fill="#092313" opacity="0.35" />
-      <ellipse cx="452" cy="364" rx="12" ry="3.5" fill="#092313" opacity="0.35" />
-      {/* rumput depan */}
-      <g stroke="#1D4726" strokeWidth="3" strokeLinecap="round" opacity="0.5">
-        <path d="M120 396c0-10 3-16 6-20M132 398c-2-9-5-15-8-19" fill="none" />
-        <path d="M540 402c0-10 3-16 6-20M552 404c-2-9-5-15-8-19" fill="none" />
-      </g>
-    </svg>
-  );
-}
-
 export function MapIllustration({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 560 400" className={className} role="img" aria-label="Peta lokasi Agro Jeruk Selorejo, Dusun Krajan, Dau, Malang">
@@ -434,50 +349,38 @@ export function MapIllustration({ className }: { className?: string }) {
           <stop offset="0" stopColor="#6FAE6F" />
           <stop offset="1" stopColor="#3D8B48" />
         </linearGradient>
-        <linearGradient id="map-orange" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFC07A" />
-          <stop offset="1" stopColor="#F96B1C" />
-        </linearGradient>
       </defs>
       <rect width="560" height="400" fill="url(#map-sky)" />
-      {/* matahari */}
       <circle cx="508" cy="44" r="20" fill="#FFD98A" />
       {/* gunung */}
       <path d="M-10 190l95-92 78 74 70-58 96 84 88-64 96 78 37-30v212H-10z" fill="url(#map-hill)" opacity="0.9" />
-      <path d="M60 118l25-24 26 24-25 18zM330 150l27-25 27 24-27 20z" fill="#FFFFFF" opacity="0.85" />
       {/* jalan */}
-      <path d="M-10 320c80-8 120-40 190-46 78-8 130 22 210 10 68-10 110-30 180-26" stroke="#F3E2B8" strokeWidth="30" fill="none" strokeLinecap="round" />
-      <path d="M-10 320c80-8 120-40 190-46 78-8 130 22 210 10 68-10 110-30 180-26" stroke="#E8D19A" strokeWidth="3" strokeDasharray="14 12" fill="none" strokeLinecap="round" />
-      <path d="M96 258c40 6 70 30 82 66" stroke="#F3E2B8" strokeWidth="18" fill="none" strokeLinecap="round" />
+      <path d="M-10 320c80-8 120-40 190-46 78-8 130 22 210 10 68-10 110-30 180-26" stroke="#F3E2B8" strokeWidth="26" fill="none" strokeLinecap="round" />
+      <path d="M-10 320c80-8 120-40 190-46 78-8 130 22 210 10 68-10 110-30 180-26" stroke="#E8D19A" strokeWidth="3" fill="none" strokeDasharray="14 12" />
       {/* area kebun */}
-      <g>
-        {[110, 150, 190, 230].map((x) => (
-          <g key={x}>
-            <circle cx={x} cy={210} r="13" fill="#25592E" />
-            <circle cx={x} cy={210} r="9" fill="#2C6F36" />
-            <circle cx={x - 3} cy={207} r="2.6" fill="#FFA473" />
-            <circle cx={x + 4} cy={213} r="2.6" fill="#FFA473" />
-          </g>
-        ))}
-        {[280, 320, 360].map((x) => (
-          <g key={x}>
-            <circle cx={x} cy={240} r="13" fill="#25592E" />
-            <circle cx={x} cy={240} r="9" fill="#2C6F36" />
-            <circle cx={x - 3} cy={237} r="2.6" fill="#FFA473" />
-            <circle cx={x + 4} cy={243} r="2.6" fill="#FFA473" />
-          </g>
-        ))}
-      </g>
+      {[110, 150, 190, 230].map((x) => (
+        <g key={x}>
+          <circle cx={x} cy={210} r="13" fill="#25592E" />
+          <circle cx={x - 3} cy={207} r="2.6" fill="#FFA473" />
+          <circle cx={x + 4} cy={213} r="2.6" fill="#FFA473" />
+        </g>
+      ))}
+      {[280, 320, 360].map((x) => (
+        <g key={x}>
+          <circle cx={x} cy={240} r="13" fill="#25592E" />
+          <circle cx={x - 3} cy={237} r="2.6" fill="#FFA473" />
+          <circle cx={x + 4} cy={243} r="2.6" fill="#FFA473" />
+        </g>
+      ))}
       {/* sungai */}
       <path d="M20 400c30-40 20-70 50-96" stroke="#9CCBE8" strokeWidth="12" fill="none" strokeLinecap="round" />
-      {/* pinpoint lokasi */}
+      {/* pinpoint lokasi beranimasi */}
       <g transform="translate(300 130)">
         <circle cx="0" cy="0" r="26" fill="#F96B1C" opacity="0.22">
           <animate attributeName="r" values="20;32;20" dur="2.4s" repeatCount="indefinite" />
         </circle>
         <path d="M0-30a26 26 0 0126 26c0 15-13 27-26 44C-13 23-26 11-26-4A26 26 0 010-30z" fill="#F96B1C" transform="translate(0 8)" />
         <circle cx="0" cy="4" r="9" fill="#FFFFFF" />
-        <circle cx="0" cy="4" r="4.5" fill="#E0520D" />
       </g>
       {/* kompas */}
       <g transform="translate(60 60)">
@@ -487,15 +390,10 @@ export function MapIllustration({ className }: { className?: string }) {
       </g>
       {/* label kebun */}
       <g transform="translate(368 66)">
-        <rect x="0" y="0" width="168" height="64" rx="12" fill="#173920" opacity="0.92" />
+        <rect width="168" height="64" rx="12" fill="#173920" opacity="0.92" />
         <circle cx="26" cy="22" r="9" fill="#F96B1C" />
-        <circle cx="26" cy="22" r="4" fill="#FFDDB8" />
-        <text x="44" y="27" fill="#FFFFFF" fontSize="15" fontWeight="800" fontFamily="inherit">
-          AGRO JERUK
-        </text>
-        <text x="44" y="46" fill="#93C796" fontSize="11" fontWeight="600" fontFamily="inherit">
-          SELOREJO · DAU · MALANG
-        </text>
+        <text x="44" y="27" fill="#FFFFFF" fontSize="15" fontWeight="800" fontFamily="inherit">AGRO JERUK</text>
+        <text x="44" y="46" fill="#93C796" fontSize="11" fontWeight="600" fontFamily="inherit">SELOREJO · DAU · MALANG</text>
       </g>
     </svg>
   );

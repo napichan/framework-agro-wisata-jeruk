@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { IconCheck, IconChevronRight } from "./icons";
 
 type Package = {
@@ -11,6 +12,7 @@ type Package = {
   title: string;
   desc: string;
   image: string;
+  imageAlt: string;
   features: { label: string; highlight?: boolean }[];
   priceLabel: string;
   price: string;
@@ -31,8 +33,8 @@ const PACKAGES: Package[] = [
     },
     title: "Petik Mandiri Reguler",
     desc: "Cocok untuk individu, pasangan, atau kunjungan santai keluarga kecil.",
-    image:
-      "linear-gradient(160deg, #4a7c3a 0%, #2d5a24 45%, #1d4726 100%)",
+    image: "/images/petik-jeruk.jpg",
+    imageAlt: "Tangan memetik jeruk langsung dari pohonnya",
     features: [
       { label: "Tiket masuk kebun utama" },
       { label: "Makan buah sepuasnya di kebun" },
@@ -59,8 +61,8 @@ const PACKAGES: Package[] = [
     },
     title: "Edukasi Budidaya & Sekolah",
     desc: "Pilihan utama rombongan sekolah, komunitas, dan keluarga belajar.",
-    image:
-      "linear-gradient(160deg, #f0a24c 0%, #d96a1f 55%, #a94e12 100%)",
+    image: "/images/edukasi-jeruk.jpg",
+    imageAlt: "Kegiatan edukasi budidaya jeruk di kebun",
     features: [
       { label: "Tiket masuk & Edukasi budidaya petik" },
       { label: "Demonstrasi Panen & Praktik Alut" },
@@ -86,8 +88,8 @@ const PACKAGES: Package[] = [
     },
     title: "Observasi & Riset / VIP Tour",
     desc: "Disediakan bagi mahasiswa, peneliti akademik, atau korporat VIP.",
-    image:
-      "linear-gradient(160deg, #e07b3a 0%, #b6521a 50%, #77350e 100%)",
+    image: "/images/kebun-jeruk.jpg",
+    imageAlt: "Barisan pohon jeruk di kebun Selorejo",
     features: [
       { label: "Akses Kebun Riset & Lab Perbibitan Unggul" },
       { label: "Sesi Wawancara Pakar Agronomis" },
@@ -175,20 +177,18 @@ export function Catalog() {
               )}
 
               {/* gambar paket */}
-              <div
-                className={`relative h-40 w-full ${p.ribbon ? "pt-0" : ""}`}
-                style={{ background: p.image }}
-              >
-                {p.ribbon && <div className="h-7" />}
-                {/* pola daun */}
+              <div className="relative h-40 w-full">
+                <Image
+                  src={p.image}
+                  alt={p.imageAlt}
+                  fill
+                  sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
+                {/* gradasi agar badge terbaca */}
                 <div
                   aria-hidden="true"
-                  className="absolute inset-0 opacity-15"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.7) 0 2px, transparent 2px), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.5) 0 2px, transparent 2px)",
-                    backgroundSize: "90px 70px, 130px 90px",
-                  }}
+                  className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/20"
                 />
                 <span
                   className={`absolute left-4 top-4 rounded-full px-3 py-1 text-[9px] font-bold ${p.badge?.style}`}
