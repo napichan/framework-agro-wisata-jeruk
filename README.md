@@ -1,5 +1,7 @@
-# framework-agro-wisata-jeruk
-Project Framework Development - Website Agro Wisata Jeruk
+# Framework Agro Wisata Jeruk
+
+Project Framework Development - Website Agro Wisata Petik Jeruk Selorejo.
+
 ## Branch & Development Workflow
 
 Project ini menggunakan Git Branching Workflow untuk mengatur proses pengembangan dan kolaborasi antar anggota tim.
