@@ -175,7 +175,7 @@ Screenshot hasil akhir aplikasi akan ditambahkan setelah seluruh fitur project s
 
 | Anggota | Tugas |
 |---|---|
-| [Dwiki Ilman Nafian - 253140707111035] | Frontend Development (Landing Page, Tentang Wisata, Login Admin) dan Backend Development (API, Database, dan Autentikasi) |
+| [Dwiki Ilman Nafian - 253140707111035] | Frontend Development (Landing Page, Tentang Wisata, Login Admin) dan Backend Development (API, Database, Autentikasi, dan Integrasi API Login) |
 | [Shely Rahmatika Devi - 253140707111021] | Frontend Development Admin Dashboard (Manajemen User, Verifikasi Pembayaran, dan Laporan) dan Backend Development (API Admin dan Integrasi Backend) |
 
 ## Catatan Pengembangan
