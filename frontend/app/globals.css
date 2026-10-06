@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+@theme {
+  /* Brand — jeruk */
+  --color-brand-50: #fff4ea;
+  --color-brand-100: #ffe6d3;
+  --color-brand-200: #ffc9a6;
+  --color-brand-300: #ffa473;
+  --color-brand-400: #ff7c40;
+  --color-brand-500: #f96b1c;
+  --color-brand-600: #e0520d;
+  --color-brand-700: #b93f0c;
+  --color-brand-800: #933512;
+  --color-brand-900: #772e12;
+
+  /* Grove — hijau kebun */
+  --color-grove-50: #f2f9f2;
+  --color-grove-100: #e0efe0;
+  --color-grove-200: #c1dfc2;
+  --color-grove-300: #93c796;
+  --color-grove-400: #5ea967;
+  --color-grove-500: #3d8b48;
+  --color-grove-600: #2c6f36;
+  --color-grove-700: #25592e;
+  --color-grove-800: #1d4726;
+  --color-grove-900: #173920;
+  --color-grove-950: #092313;
+
+  /* Night — section gelap */
+  --color-night-700: #1b2b3f;
+  --color-night-800: #131f30;
+  --color-night-900: #0b1524;
+  --color-night-950: #060d18;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
