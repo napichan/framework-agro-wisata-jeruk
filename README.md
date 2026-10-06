@@ -173,12 +173,10 @@ Screenshot hasil akhir aplikasi akan ditambahkan setelah seluruh fitur project s
 
 ## Tim Pengembang
 
-Project ini dikembangkan secara kolaboratif oleh anggota tim.
-
 | Anggota | Tugas |
 |---|---|
-| [Nama Anggota 1] | Frontend Development |
-| [Nama Anggota 2] | Admin Dashboard & Management |
+| [Dwiki Ilman Nafian - 253140707111035] | Frontend Development (Landing Page, Tentang Wisata, Login Admin) dan Backend Development (API, Database, dan Autentikasi) |
+| [Shely Rahmatika Devi - 253140707111021] | Frontend Development Admin Dashboard (Manajemen User, Verifikasi Pembayaran, dan Laporan) |
 
 ## Catatan Pengembangan
 
