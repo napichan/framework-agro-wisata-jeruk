@@ -573,6 +573,24 @@ export function IconChevronLeft(props: IconProps) {
   );
 }
 
+export function IconRefresh(props: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M20 11.5A8 8 0 106.5 6.2" />
+      <path d="M20 4.5v5h-5" />
+    </svg>
+  );
+}
+
 /* ============ Logo & badge ============ */
 
 export function LogoMark({ className }: { className?: string }) {
