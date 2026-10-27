@@ -1,3 +1,15 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type {
+  AdminUser,
+  UserModalMode,
+  UserModalState,
+  UserRole,
+  UserRoleFilter,
+  UserStatusFilter,
+} from "@/types/user.types";
+
 /**
  * Data demo Manajemen User.
  * Angka dirancang agar cocok dengan design Figma:
@@ -6,25 +18,10 @@
  * - Staf lapangan  : 26
  * - Admin          : 8
  *
- * Untuk produksi: ganti dengan panggilan API / query DB.
+ * Untuk produksi: ganti dengan panggilan API (apiFetch dari @/lib/api).
  */
 
-export type UserRole = "User" | "Staf Kebun" | "Admin";
-export type UserStatus = "Aktif" | "Nonaktif";
-
-export type AdminUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  status: UserStatus;
-  /** Mis. "Hari ini, 07:45 WIB" atau "Sedang Online" */
-  lastLogin: string;
-  /** Mis. "Mobile App (Android)" */
-  lastDevice: string;
-  /** Tanda centang untuk admin terverifikasi (sesuai design). */
-  verified?: boolean;
-};
+const PAGE_SIZE = 7; // sesuai design: "Menampilkan 1-7 dari 248 pengguna"
 
 /* ==================== 7 baris pertama (persis design) ==================== */
 
@@ -200,7 +197,7 @@ function buildUsers(): AdminUser[] {
   return users;
 }
 
-export const ADMIN_USERS: AdminUser[] = buildUsers();
+const ADMIN_USERS: AdminUser[] = buildUsers();
 
 export const USER_STATS = {
   total: ADMIN_USERS.length,
@@ -208,3 +205,162 @@ export const USER_STATS = {
   staf: ADMIN_USERS.filter((u) => u.role === "Staf Kebun").length,
   admin: ADMIN_USERS.filter((u) => u.role === "Admin").length,
 };
+
+const ROLE_OPTIONS: UserRoleFilter[] = [
+  "Semua Role",
+  "User",
+  "Staf Kebun",
+  "Admin",
+];
+
+const STATUS_OPTIONS: UserStatusFilter[] = [
+  "Semua Status",
+  "Aktif",
+  "Nonaktif",
+];
+
+/* ==================== Hook ==================== */
+
+export function useUser() {
+  const [users, setUsers] = useState<AdminUser[]>(ADMIN_USERS);
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState<UserRoleFilter>("Semua Role");
+  const [status, setStatus] = useState<UserStatusFilter>("Semua Status");
+  const [page, setPage] = useState(1);
+  const [modal, setModal] = useState<UserModalState>(null);
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return users.filter((user) => {
+      const matchSearch =
+        query === "" ||
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.id.toLowerCase().includes(query);
+
+      const matchRole = role === "Semua Role" || user.role === role;
+      const matchStatus = status === "Semua Status" || user.status === status;
+
+      return matchSearch && matchRole && matchStatus;
+    });
+  }, [users, search, role, status]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(start, start + PAGE_SIZE);
+
+  // Nomor halaman: jendela 3 di sekitar halaman aktif (seperti design).
+  const pageNumbers = useMemo(() => {
+    const from = Math.max(1, Math.min(currentPage - 1, totalPages - 2));
+    const to = Math.min(totalPages, from + 2);
+    const numbers: number[] = [];
+    for (let n = from; n <= to; n++) numbers.push(n);
+    return numbers;
+  }, [currentPage, totalPages]);
+
+  const from = filtered.length === 0 ? 0 : start + 1;
+  const to = Math.min(start + PAGE_SIZE, filtered.length);
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeRole(value: UserRoleFilter) {
+    setRole(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: UserStatusFilter) {
+    setStatus(value);
+    setPage(1);
+  }
+
+  function openModal(user: AdminUser, mode: UserModalMode) {
+    setModal({ user, mode });
+  }
+
+  function closeModal() {
+    setModal(null);
+  }
+
+  function saveUser(updated: AdminUser) {
+    setUsers((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    setModal(null);
+  }
+
+  function exportCsv() {
+    const header = [
+      "ID",
+      "Nama",
+      "Email",
+      "Role",
+      "Status",
+      "Terakhir Login",
+      "Perangkat",
+    ];
+
+    const rows = filtered.map((user) =>
+      [
+        user.id,
+        user.name,
+        user.email,
+        user.role,
+        user.status,
+        user.lastLogin,
+        user.lastDevice,
+      ]
+        .map((cell) => `"${cell.replace(/"/g, '""')}"`)
+        .join(","),
+    );
+
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "manajemen-user.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return {
+    // filter
+    search,
+    role,
+    status,
+    changeSearch,
+    changeRole,
+    changeStatus,
+    roleOptions: ROLE_OPTIONS,
+    statusOptions: STATUS_OPTIONS,
+
+    // data
+    users: visible,
+    totalFiltered: filtered.length,
+
+    // paginasi
+    start,
+    from,
+    to,
+    currentPage,
+    totalPages,
+    pageNumbers,
+    setPage,
+
+    // modal
+    modal,
+    openModal,
+    closeModal,
+    saveUser,
+
+    // export
+    exportCsv,
+  };
+}

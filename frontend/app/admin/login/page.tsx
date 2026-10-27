@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
-import { LogoMark } from "@/components/icons";
+import { LogoMark } from "@/components/ui/icons";
 
 const initialState: LoginState = {};
 

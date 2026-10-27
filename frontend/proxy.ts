@@ -1,32 +1,27 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 
-export async function proxy(request: NextRequest) {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = await verifySessionToken(token);
+// Harus sama dengan TOKEN_KEY di lib/token.ts, login/actions.ts, dan layout.tsx
+const TOKEN_KEY = "agro_token";
 
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAdminRoute = pathname.startsWith("/admin");
+  const token = request.cookies.get(TOKEN_KEY)?.value;
   const isLoginPage = pathname === "/admin/login";
 
-  // Belum login -> semua /admin/* diarahkan ke login.
-  if (isAdminRoute && !isLoginPage && !session) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin/login";
-    return NextResponse.redirect(url);
+  // Belum login, mau masuk halaman admin -> ke login
+  if (!token && !isLoginPage) {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
-  // Sudah login tapi buka halaman login -> langsung ke dashboard.
-  if (isLoginPage && session) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin";
-    return NextResponse.redirect(url);
+  // Sudah login, buka halaman login lagi -> ke dashboard
+  if (token && isLoginPage) {
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/admin"],
+  matcher: ["/admin/:path*"],
 };

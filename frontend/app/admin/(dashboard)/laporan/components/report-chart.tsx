@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CHART_SERIES, type ChartMode, rupiah } from "@/lib/admin-reports";
+import { CHART_SERIES, rupiah } from "@/hooks/useReports";
+import type { ChartMode } from "@/types/report.types";
 
 const MODES: Array<{ key: ChartMode; label: string }> = [
   { key: "harian", label: "Harian" },
@@ -35,7 +36,7 @@ const CHART = {
   padLeft: 64,
 };
 
-export function ReportChart() {
+export default function ReportChart() {
   const [mode, setMode] = useState<ChartMode>("bulanan");
   const series = CHART_SERIES[mode];
 

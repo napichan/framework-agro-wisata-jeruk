@@ -1,15 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  DESTINATION_ACCOUNTS,
-  PAYMENTS,
-  computePaymentStats,
-  rupiah,
-  waLink,
-  type Payment,
-  type PaymentStatus,
-} from "@/lib/admin-payments";
+import { rupiah, usePayments, waLink } from "@/hooks/usePayments";
+import type { PaymentStatus } from "@/types/payments.types";
 import {
   IconCalendar,
   IconCheck,
@@ -22,21 +14,9 @@ import {
   IconRefresh,
   IconSearch,
   IconWhatsApp,
-} from "@/components/icons";
-
-const PAGE_SIZE = 10; // sesuai design: "Menampilkan 10 per halaman dari 54..."
-
-type StatusFilter = "semua" | "menunggu" | "diverifikasi" | "ditolak";
-
-const STATUS_FILTERS: Array<{
-  key: StatusFilter;
-  label: (menunggu: number) => string;
-}> = [
-  { key: "menunggu", label: (n) => `Perlu Verifikasi (${n})` },
-  { key: "semua", label: () => "Semua" },
-  { key: "diverifikasi", label: () => "Diverifikasi" },
-  { key: "ditolak", label: () => "Ditolak" },
-];
+} from "@/components/ui/icons";
+import RejectModal from "./rejectModal";
+import SlipModal from "./slipModal";
 
 const STATUS_STYLE: Record<PaymentStatus, { dot: string; text: string }> = {
   Menunggu: { dot: "bg-amber-500", text: "text-amber-600" },
@@ -44,233 +24,38 @@ const STATUS_STYLE: Record<PaymentStatus, { dot: string; text: string }> = {
   Ditolak: { dot: "bg-red-500", text: "text-red-500" },
 };
 
-/* ==================== Modal slip ==================== */
-
-function SlipModal({ payment, onClose }: { payment: Payment; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Bukti slip transfer"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-neutral-900">
-              Bukti Slip Transfer
-            </p>
-            <p className="text-xs text-neutral-400">{payment.id}</p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup"
-            className="rounded-lg px-2 py-1 text-lg leading-none text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
-          >
-            ×
-          </button>
-        </div>
-
-        {payment.hasSlip ? (
-          <>
-            {/* Pratinjau slip */}
-            <div className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-5 text-center">
-              <IconReceipt className="mx-auto h-8 w-8 text-neutral-300" />
-              <p className="mt-2 text-[11px] uppercase tracking-wide text-neutral-400">
-                Slip {payment.bank}
-              </p>
-              <p className="mt-1 text-lg font-extrabold text-neutral-900">
-                {rupiah(payment.nominal)}
-              </p>
-              <p className="mt-1 text-[11px] text-neutral-400">
-                {payment.date} • {payment.time}
-              </p>
-            </div>
-
-            <dl className="mt-4 space-y-2.5 text-sm">
-              {[
-                ["Pemesan", payment.customer],
-                ["Pengirim", `${payment.senderName} (${payment.bank})`],
-                ["No. Rekening", payment.senderAccount],
-                ["Paket", payment.paket],
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-4">
-                  <dt className="text-xs text-neutral-400">{label}</dt>
-                  <dd className="text-right text-xs font-semibold text-neutral-800">
-                    {value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        ) : (
-          <p className="mt-4 rounded-xl bg-red-50 p-4 text-center text-xs font-medium text-red-500">
-            Slip tidak diunggah pemesan. Minta ulang lewat WhatsApp.
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 w-full rounded-lg border border-neutral-200 px-4 py-2.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50"
-        >
-          Tutup
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ==================== Modal konfirmasi tolak ==================== */
-
-function RejectModal({
-  payment,
-  onCancel,
-  onConfirm,
-}: {
-  payment: Payment;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Konfirmasi tolak pembayaran"
-      onClick={onCancel}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <p className="text-sm font-bold text-neutral-900">
-          Tolak pembayaran ini?
-        </p>
-
-        <p className="mt-2 text-xs leading-5 text-neutral-500">
-          {payment.customer} • {rupiah(payment.nominal)} akan berpindah ke
-          status <span className="font-semibold text-red-500">Ditolak</span>.
-          Pemesan bisa mengunggah ulang bukti transfer.
-        </p>
-
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-neutral-200 px-4 py-2 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50"
-          >
-            Batal
-          </button>
-
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-lg bg-red-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-red-600"
-          >
-            Ya, Tolak
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ==================== Manager ==================== */
-
-export function PaymentsManager() {
-  const [payments, setPayments] = useState<Payment[]>(PAYMENTS);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
-  const [paketFilter, setPaketFilter] = useState("ALL");
-  const [page, setPage] = useState(1);
-  const [slipFor, setSlipFor] = useState<Payment | null>(null);
-  const [rejectFor, setRejectFor] = useState<Payment | null>(null);
-  const [rowMenu, setRowMenu] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
-
-  const stats = useMemo(() => computePaymentStats(payments), [payments]);
-
-  const paketOptions = useMemo(() => {
-    const unique = Array.from(new Set(payments.map((p) => p.paket)));
-    return ["ALL", ...unique];
-  }, [payments]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const digits = q.replace(/\D/g, "");
-
-    return payments.filter((payment) => {
-      const matchQuery =
-        q === "" ||
-        payment.customer.toLowerCase().includes(q) ||
-        payment.id.toLowerCase().includes(q) ||
-        (digits !== "" && payment.wa.replace(/\D/g, "").includes(digits));
-
-      const matchStatus =
-        statusFilter === "semua" ||
-        (statusFilter === "menunggu" && payment.status === "Menunggu") ||
-        (statusFilter === "diverifikasi" && payment.status === "Diverifikasi") ||
-        (statusFilter === "ditolak" && payment.status === "Ditolak");
-
-      const matchPaket =
-        paketFilter === "ALL" || payment.paket === paketFilter;
-
-      return matchQuery && matchStatus && matchPaket;
-    });
-  }, [payments, query, statusFilter, paketFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const visible = filtered.slice(start, start + PAGE_SIZE);
-
-  // Jendela 4 nomor halaman (seperti design: 1 2 3 4).
-  const pageNumbers = useMemo(() => {
-    const from = Math.max(1, Math.min(currentPage - 1, totalPages - 3));
-    const to = Math.min(totalPages, from + 3);
-    const numbers: number[] = [];
-    for (let n = from; n <= to; n++) numbers.push(n);
-    return numbers;
-  }, [currentPage, totalPages]);
-
-  function updateStatus(id: string, status: PaymentStatus, paid?: boolean) {
-    setPayments((current) =>
-      current.map((payment) =>
-        payment.id === id ? { ...payment, status, paid } : payment,
-      ),
-    );
-  }
-
-  function handleRefresh() {
-    if (refreshing) return;
-    setRefreshing(true);
-
-    window.setTimeout(() => {
-      setPayments(PAYMENTS);
-      setQuery("");
-      setStatusFilter("semua");
-      setPaketFilter("ALL");
-      setPage(1);
-      setRefreshing(false);
-      setRowMenu(null);
-      setLastRefresh(
-        new Date().toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      );
-    }, 700);
-  }
-
-  /* ==================== Render ==================== */
+export default function PaymentTable() {
+  const {
+    stats,
+    destinationAccounts,
+    statusFilters,
+    paketOptions,
+    visible,
+    totalFiltered,
+    query,
+    statusFilter,
+    paketFilter,
+    changeQuery,
+    changeStatusFilter,
+    changePaketFilter,
+    start,
+    currentPage,
+    totalPages,
+    pageNumbers,
+    setPage,
+    updateStatus,
+    refreshing,
+    lastRefresh,
+    handleRefresh,
+    slipFor,
+    setSlipFor,
+    rejectFor,
+    setRejectFor,
+    confirmReject,
+    rowMenu,
+    setRowMenu,
+    toggleRowMenu,
+  } = usePayments();
 
   return (
     <div className="space-y-6">
@@ -298,9 +83,7 @@ export function PaymentsManager() {
             <IconCalendar className="h-4 w-4 text-neutral-400" />
 
             <div className="leading-tight">
-              <p className="text-xs font-bold text-neutral-700">
-                28 Okt 2024
-              </p>
+              <p className="text-xs font-bold text-neutral-700">28 Okt 2024</p>
               <p className="text-[10px] text-neutral-400">
                 {lastRefresh ? `Diperbarui ${lastRefresh}` : "(Hari Ini)"}
               </p>
@@ -313,7 +96,9 @@ export function PaymentsManager() {
             disabled={refreshing}
             className="flex items-center gap-2 rounded-xl bg-grove-700 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-grove-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            <IconRefresh className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            <IconRefresh
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
             {refreshing ? "Memperbarui..." : "Segarkan Data"}
           </button>
         </div>
@@ -394,7 +179,7 @@ export function PaymentsManager() {
           </div>
 
           <ul className="mt-3 space-y-1.5">
-            {DESTINATION_ACCOUNTS.map((account) => (
+            {destinationAccounts.map((account) => (
               <li key={account.number} className="flex items-start gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-grove-500" />
 
@@ -427,10 +212,7 @@ export function PaymentsManager() {
             <input
               type="search"
               value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => changeQuery(event.target.value)}
               placeholder="Cari nama pemesan, no. WA, atau ID..."
               aria-label="Cari nama pemesan, nomor WhatsApp, atau ID transaksi"
               className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-grove-500 focus:ring-2 focus:ring-grove-500/20"
@@ -439,17 +221,14 @@ export function PaymentsManager() {
 
           {/* Filter status */}
           <div className="flex flex-wrap gap-2">
-            {STATUS_FILTERS.map((filter) => {
+            {statusFilters.map((filter) => {
               const active = statusFilter === filter.key;
 
               return (
                 <button
                   key={filter.key}
                   type="button"
-                  onClick={() => {
-                    setStatusFilter(filter.key);
-                    setPage(1);
-                  }}
+                  onClick={() => changeStatusFilter(filter.key)}
                   aria-pressed={active}
                   className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition ${
                     active
@@ -469,10 +248,7 @@ export function PaymentsManager() {
           {/* Filter paket */}
           <select
             value={paketFilter}
-            onChange={(event) => {
-              setPaketFilter(event.target.value);
-              setPage(1);
-            }}
+            onChange={(event) => changePaketFilter(event.target.value)}
             aria-label="Filter paket wisata"
             className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-600 outline-none transition focus:border-grove-500 focus:ring-2 focus:ring-grove-500/20"
           >
@@ -492,7 +268,9 @@ export function PaymentsManager() {
             <thead>
               <tr className="border-b border-neutral-100 text-[11px] uppercase tracking-wide text-neutral-400">
                 <th className="px-5 py-3.5 font-semibold">No</th>
-                <th className="px-5 py-3.5 font-semibold">Tanggal &amp; Waktu</th>
+                <th className="px-5 py-3.5 font-semibold">
+                  Tanggal &amp; Waktu
+                </th>
                 <th className="px-5 py-3.5 font-semibold">
                   Pemesan / Paket Wisata
                 </th>
@@ -654,11 +432,7 @@ export function PaymentsManager() {
                               <button
                                 type="button"
                                 aria-label={`Aksi lain untuk ${payment.id}`}
-                                onClick={() =>
-                                  setRowMenu(
-                                    rowMenu === payment.id ? null : payment.id,
-                                  )
-                                }
+                                onClick={() => toggleRowMenu(payment.id)}
                                 className="rounded-lg border border-neutral-200 p-1.5 text-neutral-400 transition hover:bg-neutral-50 hover:text-neutral-700"
                               >
                                 <IconDots className="h-4 w-4" />
@@ -760,8 +534,8 @@ export function PaymentsManager() {
       {/* ================= FOOTER TABEL ================= */}
       <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <p className="text-xs text-neutral-400">
-          Menampilkan {Math.min(PAGE_SIZE, visible.length)} per halaman dari{" "}
-          {filtered.length} hasil pembayaran
+          Menampilkan {visible.length} per halaman dari {totalFiltered} hasil
+          pembayaran
         </p>
 
         <div className="flex items-center gap-1.5">
@@ -812,10 +586,7 @@ export function PaymentsManager() {
         <RejectModal
           payment={rejectFor}
           onCancel={() => setRejectFor(null)}
-          onConfirm={() => {
-            updateStatus(rejectFor.id, "Ditolak", false);
-            setRejectFor(null);
-          }}
+          onConfirm={confirmReject}
         />
       ) : null}
     </div>

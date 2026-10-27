@@ -1,13 +1,13 @@
-import { PaymentsManager } from "@/components/admin/payments-manager";
+import PaymentTable from "./components/paymentTable";
 
 export const metadata = {
-  title: "Verifikasi Pembayaran — Dashboard Admin",
+  title: "Pembayaran — Dashboard Admin",
 };
 
 export default function AdminPembayaranPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <PaymentsManager />
+      <PaymentTable />
     </div>
   );
 }

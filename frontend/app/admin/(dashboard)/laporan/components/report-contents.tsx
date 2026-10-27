@@ -1,15 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  DATE_OPTIONS,
-  REPORT_TX,
-  computeReportStats,
-  formatDate,
-  rupiah,
-  type ReportStatus,
-} from "@/lib/admin-reports";
-import { ReportChart } from "@/components/admin/report-chart";
+import { formatDate, rupiah, useReports } from "@/hooks/useReports";
+import type { ReportStatus, ReportStatusFilter } from "@/types/report.types";
 import {
   IconCalendar,
   IconChevronLeft,
@@ -17,18 +9,8 @@ import {
   IconDocument,
   IconDownload,
   IconSearch,
-} from "@/components/icons";
-
-const PAGE_SIZE = 6; // sesuai design: "Menampilkan 1-6 dari 184 transaksi"
-
-type StatusFilter = "Semua Status" | ReportStatus;
-
-const STATUS_OPTIONS: StatusFilter[] = [
-  "Semua Status",
-  "Terverifikasi",
-  "Pending",
-  "Ditolak",
-];
+} from "@/components/ui/icons";
+import ReportChart from "./report-chart";
 
 const STATUS_STYLE: Record<ReportStatus, { bg: string; text: string }> = {
   Terverifikasi: { bg: "bg-grove-100", text: "text-grove-700" },
@@ -53,16 +35,6 @@ function avatarColor(id: string): string {
   return AVATAR_COLORS[hash];
 }
 
-function download(filename: string, content: string, mime: string) {
-  const blob = new Blob([`\uFEFF${content}`], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 /* ==================== Kartu statistik ==================== */
 
 type StatCard = {
@@ -75,48 +47,28 @@ type StatCard = {
   iconClass: string;
 };
 
-export function ReportsManager() {
-  const [date, setDate] = useState(DATE_OPTIONS[0]);
-  const [status, setStatus] = useState<StatusFilter>("Semua Status");
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
-
-  /** Data sesuai filter tanggal & status (dipakai kartu + tabel). */
-  const scoped = useMemo(() => {
-    return REPORT_TX.filter((tx) => {
-      const matchDate = tx.date <= date;
-      const matchStatus = status === "Semua Status" || tx.status === status;
-      return matchDate && matchStatus;
-    });
-  }, [date, status]);
-
-  const stats = useMemo(() => computeReportStats(scoped), [scoped]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return scoped.filter((tx) => {
-      if (q === "") return true;
-      return (
-        tx.id.toLowerCase().includes(q) ||
-        tx.user.toLowerCase().includes(q) ||
-        tx.paket.toLowerCase().includes(q)
-      );
-    });
-  }, [scoped, query]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const visible = filtered.slice(start, start + PAGE_SIZE);
-
-  const pageNumbers = useMemo(() => {
-    const from = Math.max(1, Math.min(currentPage - 1, totalPages - 2));
-    const to = Math.min(totalPages, from + 2);
-    const numbers: number[] = [];
-    for (let n = from; n <= to; n++) numbers.push(n);
-    return numbers;
-  }, [currentPage, totalPages]);
+export default function ReportContents() {
+  const {
+    date,
+    status,
+    query,
+    changeDate,
+    changeStatus,
+    changeQuery,
+    dateOptions,
+    statusOptions,
+    stats,
+    visible,
+    totalFiltered,
+    from,
+    to,
+    currentPage,
+    totalPages,
+    pageNumbers,
+    setPage,
+    exportCsv,
+    exportPdf,
+  } = useReports();
 
   const statCards: StatCard[] = [
     {
@@ -157,59 +109,6 @@ export function ReportsManager() {
     },
   ];
 
-  function exportCsv() {
-    const header = ["ID", "Nama", "Paket", "Tanggal", "Total", "Status"];
-    const rows = filtered.map((tx) =>
-      [tx.id, tx.user, tx.paket, formatDate(tx.date), rupiah(tx.nominal), tx.status]
-        .map((cell) => `"${cell.replace(/"/g, '""')}"`)
-        .join(","),
-    );
-
-    download(
-      "laporan-transaksi.csv",
-      [header.join(","), ...rows].join("\n"),
-      "text/csv;charset=utf-8;",
-    );
-  }
-
-  function exportPdf() {
-    // Render laporan sederhana ke jendela cetak (bisa "Save as PDF").
-    const rows = filtered
-      .map(
-        (tx) =>
-          `<tr><td>${tx.id}</td><td>${tx.user}</td><td>${tx.paket}</td><td>${formatDate(
-            tx.date,
-          )}</td><td>${rupiah(tx.nominal)}</td><td>${tx.status}</td></tr>`,
-      )
-      .join("");
-
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Laporan Transaksi</title>
-<style>
-body{font-family:system-ui,sans-serif;padding:24px;color:#171717}
-h1{font-size:20px;margin:0 0 4px}
-p{font-size:12px;color:#737373;margin:0 0 16px}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{border:1px solid #e5e5e5;padding:6px 8px;text-align:left}
-th{background:#fafafa}
-</style></head><body>
-<h1>Laporan Transaksi — Agro Petik Jeruk</h1>
-<p>Periode s.d. ${formatDate(date)} • ${stats.total} transaksi • ${rupiah(
-      stats.revenue,
-    )} • ${stats.verifiedCount} terverifikasi (${stats.verifiedText}%)</p>
-<table><thead><tr><th>ID</th><th>Nama</th><th>Paket</th><th>Tanggal</th><th>Total</th><th>Status</th></tr></thead>
-<tbody>${rows}</tbody></table>
-<script>window.onload = () => { window.print(); };</script>
-</body></html>`;
-
-    const win = window.open("", "_blank", "width=900,height=700");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-  }
-
-  const from = filtered.length === 0 ? 0 : start + 1;
-  const to = Math.min(start + PAGE_SIZE, filtered.length);
-
   return (
     <div className="space-y-6">
       {/* ================= HEADER ================= */}
@@ -239,14 +138,11 @@ th{background:#fafafa}
 
               <select
                 value={date}
-                onChange={(event) => {
-                  setDate(event.target.value);
-                  setPage(1);
-                }}
+                onChange={(event) => changeDate(event.target.value)}
                 aria-label="Pilih tanggal laporan"
                 className="cursor-pointer appearance-none rounded-xl border border-neutral-200 bg-white py-2.5 pl-9 pr-8 text-xs font-semibold text-neutral-600 outline-none transition focus:border-grove-500 focus:ring-2 focus:ring-grove-500/20"
               >
-                {DATE_OPTIONS.map((option) => (
+                {dateOptions.map((option) => (
                   <option key={option} value={option}>
                     {formatDate(option)}
                   </option>
@@ -257,14 +153,13 @@ th{background:#fafafa}
             {/* Filter status */}
             <select
               value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as StatusFilter);
-                setPage(1);
-              }}
+              onChange={(event) =>
+                changeStatus(event.target.value as ReportStatusFilter)
+              }
               aria-label="Filter status transaksi"
               className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-600 outline-none transition focus:border-grove-500 focus:ring-2 focus:ring-grove-500/20"
             >
-              {STATUS_OPTIONS.map((option) => (
+              {statusOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -355,10 +250,7 @@ th{background:#fafafa}
             <input
               type="search"
               value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => changeQuery(event.target.value)}
               placeholder="Cari TRX, nama user..."
               aria-label="Cari transaksi"
               className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-grove-500 focus:ring-2 focus:ring-grove-500/20"
@@ -445,7 +337,7 @@ th{background:#fafafa}
         {/* Footer tabel */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-neutral-100 px-5 py-4 sm:flex-row sm:px-6">
           <p className="text-xs text-neutral-400">
-            Menampilkan {from}-{to} dari {filtered.length} transaksi
+            Menampilkan {from}-{to} dari {totalFiltered} transaksi
           </p>
 
           <div className="flex items-center gap-1.5">

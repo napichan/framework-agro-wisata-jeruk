@@ -1,3 +1,15 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type {
+  ChartMode,
+  ChartSeries,
+  ReportStats,
+  ReportStatus,
+  ReportStatusFilter,
+  ReportTx,
+} from "@/types/report.types";
+
 /**
  * Data demo Laporan.
  * Angka dirancang agar cocok dengan design Figma:
@@ -6,26 +18,12 @@
  * - Terverifikasi   : 168 (91,3%)
  * - Ditolak / Batal : 15 (8,2%) + 1 Pending = 184
  *
- * Catatan: design menampilkan 16 ditolak + 184 total + baris Pending
- * sekaligus — angkanya tidak konsisten (168 + 16 = 184 menyisakan 0 Pending).
- * Karena tabel design menampilkan transaksi Pending, kami pakai 168 / 15 / 1
- * sehingga total tetap tepat 184.
- *
- * Untuk produksi: ganti dengan panggilan API / query DB.
+ * Untuk produksi: ganti dengan panggilan API (apiFetch dari @/lib/api).
  */
 
-export type ReportStatus = "Terverifikasi" | "Pending" | "Ditolak";
+const PAGE_SIZE = 6; // sesuai design: "Menampilkan 1-6 dari 184 transaksi"
 
-export type ReportTx = {
-  id: string; // "#TRX-1824"
-  user: string;
-  paket: string;
-  date: string; // ISO "2024-10-28"
-  nominal: number;
-  status: ReportStatus;
-};
-
-export const MONTH_ABBR = [
+const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
@@ -144,14 +142,15 @@ function buildGenerated(): ReportTx[] {
   );
   nominals.push(REVENUE_TARGET - FEATURED_SUM - sum(nominals));
 
-  const last = nominals[nominals.length - 1];
-  if (last < 20_000 || last > 500_000) {
-    throw new Error(`Nominal penyeimbang tidak wajar: ${last}`);
+  const lastNominal = nominals[nominals.length - 1];
+  if (lastNominal < 20_000 || lastNominal > 500_000) {
+    throw new Error(`Nominal penyeimbang tidak wajar: ${lastNominal}`);
   }
 
   return Array.from({ length: GENERATED_COUNT }, (_, i) => {
     const first = FIRST_NAMES[i % FIRST_NAMES.length];
-    const last = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
+    const last =
+      LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
     const day = 24 - (i % 24); // 24 Okt s.d. 01 Okt, berulang
 
     return {
@@ -166,23 +165,11 @@ function buildGenerated(): ReportTx[] {
   });
 }
 
-export const REPORT_TX: ReportTx[] = [...FEATURED, ...buildGenerated()];
+const REPORT_TX: ReportTx[] = [...FEATURED, ...buildGenerated()];
 
 /* ==================== Statistik ==================== */
 
-export type ReportStats = {
-  total: number;
-  revenue: number;
-  verifiedCount: number;
-  verifiedRatio: number; // persen, mis. 91.3
-  verifiedText: string; // "91,3"
-  rejectedCount: number;
-  rejectedRatio: number;
-  rejectedText: string;
-  pendingCount: number;
-};
-
-export function computeReportStats(txs: ReportTx[]): ReportStats {
+function computeReportStats(txs: ReportTx[]): ReportStats {
   const total = txs.length;
   const verified = txs.filter((tx) => tx.status === "Terverifikasi").length;
   const rejected = txs.filter((tx) => tx.status === "Ditolak").length;
@@ -204,15 +191,6 @@ export function computeReportStats(txs: ReportTx[]): ReportStats {
 }
 
 /* ==================== Data grafik ==================== */
-
-export type ChartMode = "harian" | "mingguan" | "bulanan";
-
-export type ChartSeries = {
-  labels: string[];
-  values: number[];
-  /** Indeks titik yang ditandai (mis. "Okt (Aktif)"). */
-  activeIndex: number;
-};
 
 /**
  * Ketiga seri menjumlah tepat Rp 14.850.000 (periode berjalan).
@@ -241,7 +219,169 @@ export const CHART_SERIES: Record<ChartMode, ChartSeries> = {
 };
 
 /** Daftar tanggal untuk filter tanggal (28 Okt s.d. 1 Okt 2024). */
-export const DATE_OPTIONS: string[] = Array.from(
+const DATE_OPTIONS: string[] = Array.from(
   { length: 28 },
   (_, i) => `2024-10-${String(28 - i).padStart(2, "0")}`,
 );
+
+const STATUS_OPTIONS: ReportStatusFilter[] = [
+  "Semua Status",
+  "Terverifikasi",
+  "Pending",
+  "Ditolak",
+];
+
+/* ==================== Export ==================== */
+
+function download(filename: string, content: string, mime: string) {
+  const blob = new Blob([`\uFEFF${content}`], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ==================== Hook ==================== */
+
+export function useReports() {
+  const [date, setDate] = useState(DATE_OPTIONS[0]);
+  const [status, setStatus] = useState<ReportStatusFilter>("Semua Status");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+
+  /** Data sesuai filter tanggal & status (dipakai kartu + tabel). */
+  const scoped = useMemo(() => {
+    return REPORT_TX.filter((tx) => {
+      const matchDate = tx.date <= date;
+      const matchStatus = status === "Semua Status" || tx.status === status;
+      return matchDate && matchStatus;
+    });
+  }, [date, status]);
+
+  const stats = useMemo(() => computeReportStats(scoped), [scoped]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return scoped.filter((tx) => {
+      if (q === "") return true;
+      return (
+        tx.id.toLowerCase().includes(q) ||
+        tx.user.toLowerCase().includes(q) ||
+        tx.paket.toLowerCase().includes(q)
+      );
+    });
+  }, [scoped, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(start, start + PAGE_SIZE);
+
+  const pageNumbers = useMemo(() => {
+    const from = Math.max(1, Math.min(currentPage - 1, totalPages - 2));
+    const to = Math.min(totalPages, from + 2);
+    const numbers: number[] = [];
+    for (let n = from; n <= to; n++) numbers.push(n);
+    return numbers;
+  }, [currentPage, totalPages]);
+
+  const from = filtered.length === 0 ? 0 : start + 1;
+  const to = Math.min(start + PAGE_SIZE, filtered.length);
+
+  function changeDate(value: string) {
+    setDate(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: ReportStatusFilter) {
+    setStatus(value);
+    setPage(1);
+  }
+
+  function changeQuery(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
+
+  function exportCsv() {
+    const header = ["ID", "Nama", "Paket", "Tanggal", "Total", "Status"];
+    const rows = filtered.map((tx) =>
+      [tx.id, tx.user, tx.paket, formatDate(tx.date), rupiah(tx.nominal), tx.status]
+        .map((cell) => `"${cell.replace(/"/g, '""')}"`)
+        .join(","),
+    );
+
+    download(
+      "laporan-transaksi.csv",
+      [header.join(","), ...rows].join("\n"),
+      "text/csv;charset=utf-8;",
+    );
+  }
+
+  function exportPdf() {
+    // Render laporan sederhana ke jendela cetak (bisa "Save as PDF").
+    const rows = filtered
+      .map(
+        (tx) =>
+          `<tr><td>${tx.id}</td><td>${tx.user}</td><td>${tx.paket}</td><td>${formatDate(
+            tx.date,
+          )}</td><td>${rupiah(tx.nominal)}</td><td>${tx.status}</td></tr>`,
+      )
+      .join("");
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Laporan Transaksi</title>
+<style>
+body{font-family:system-ui,sans-serif;padding:24px;color:#171717}
+h1{font-size:20px;margin:0 0 4px}
+p{font-size:12px;color:#737373;margin:0 0 16px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #e5e5e5;padding:6px 8px;text-align:left}
+th{background:#fafafa}
+</style></head><body>
+<h1>Laporan Transaksi — Agro Petik Jeruk</h1>
+<p>Periode s.d. ${formatDate(date)} • ${stats.total} transaksi • ${rupiah(
+      stats.revenue,
+    )} • ${stats.verifiedCount} terverifikasi (${stats.verifiedText}%)</p>
+<table><thead><tr><th>ID</th><th>Nama</th><th>Paket</th><th>Tanggal</th><th>Total</th><th>Status</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<script>window.onload = () => { window.print(); };</script>
+</body></html>`;
+
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+  }
+
+  return {
+    // filter
+    date,
+    status,
+    query,
+    changeDate,
+    changeStatus,
+    changeQuery,
+    dateOptions: DATE_OPTIONS,
+    statusOptions: STATUS_OPTIONS,
+
+    // data
+    stats,
+    visible,
+    totalFiltered: filtered.length,
+
+    // paginasi
+    from,
+    to,
+    currentPage,
+    totalPages,
+    pageNumbers,
+    setPage,
+
+    // export
+    exportCsv,
+    exportPdf,
+  };
+}

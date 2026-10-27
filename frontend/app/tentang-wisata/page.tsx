@@ -19,8 +19,8 @@ import {
   IconWhatsApp,
   IconYoutube,
   LogoMark,
-} from "@/components/icons";
-import { Navbar, TopBar } from "@/components/sections";
+} from "@/components/ui/icons";
+import { Navbar, TopBar } from "@/app/landing/sections";
 
 export const metadata: Metadata = {
   title: "Tentang Wisata — Agro Jeruk Selorejo",

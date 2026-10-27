@@ -1,35 +1,25 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type {
+  DestinationAccount,
+  Payment,
+  PaymentStats,
+  PaymentStatus,
+  StatusFilter,
+} from "@/types/payments.types";
+
 /**
  * Data demo Verifikasi Pembayaran.
  * Angka dirancang agar cocok dengan design Figma:
- * - Menunggu verifikasi : 14 transaksi — Total Rp 4.999.000
+ * - Menunggu verifikasi  : 14 transaksi — Total Rp 4.999.000
  * - Diverifikasi hari ini: 38 transaksi — Total Rp 12.400.000
  * - Ditolak              : 2 transaksi  — Total 54 pembayaran
  *
- * Untuk produksi: ganti dengan panggilan API / query DB.
+ * Untuk produksi: ganti dengan panggilan API (apiFetch dari @/lib/api).
  */
 
-export type PaymentStatus = "Menunggu" | "Diverifikasi" | "Ditolak";
-
-export type Payment = {
-  id: string;
-  date: string; // "28 Okt 2024"
-  time: string; // "09:15 WIB"
-  customer: string;
-  wa: string; // "0812-3344-5566"
-  paket: string;
-  bank: string;
-  senderName: string;
-  senderAccount: string;
-  /** Catatan kecil di bawah info transfer (oranye/merah). */
-  infoNote?: string;
-  nominal: number;
-  /** Catatan di bawah nominal (merah). */
-  nominalNote?: string;
-  status: PaymentStatus;
-  hasSlip: boolean;
-  /** Penanda sudah ditandai QR (khusus status Diverifikasi). */
-  paid?: boolean;
-};
+const PAGE_SIZE = 10;
 
 /* ==================== 5 baris pertama (persis design) ==================== */
 
@@ -199,12 +189,22 @@ function balanced(pool: number[], target: number): number[] {
 
 const WAITING_NOMINALS = balanced(
   WAITING_POOL,
-  WAITING_TARGET - sum(FEATURED_PAYMENTS.filter((p) => p.status === "Menunggu").map((p) => p.nominal)),
+  WAITING_TARGET -
+    sum(
+      FEATURED_PAYMENTS.filter((p) => p.status === "Menunggu").map(
+        (p) => p.nominal,
+      ),
+    ),
 );
 
 const VERIFIED_NOMINALS = balanced(
   VERIFIED_POOL,
-  VERIFIED_TARGET - sum(FEATURED_PAYMENTS.filter((p) => p.status === "Diverifikasi").map((p) => p.nominal)),
+  VERIFIED_TARGET -
+    sum(
+      FEATURED_PAYMENTS.filter((p) => p.status === "Diverifikasi").map(
+        (p) => p.nominal,
+      ),
+    ),
 );
 
 /* ==================== Generator deterministik ==================== */
@@ -216,7 +216,8 @@ function buildPayments(): Payment[] {
   // 14 menunggu = 3 featured + 11 generate
   for (let i = 0; i < WAITING_NOMINALS.length; i++, counter--) {
     const first = FIRST_NAMES[i % FIRST_NAMES.length];
-    const last = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
+    const last =
+      LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
 
     payments.push({
       id: `TRX-${counter}`,
@@ -263,7 +264,7 @@ function buildPayments(): Payment[] {
     id: `TRX-${counter}`,
     date: "27 Okt 2024",
     time: "15:12 WIB",
-    "customer": "Rudi Hartanto",
+    customer: "Rudi Hartanto",
     wa: "0895-3344-1122",
     paket: "Paket Rombongan (15 Pax)",
     bank: "MANDIRI",
@@ -279,18 +280,34 @@ function buildPayments(): Payment[] {
   return payments;
 }
 
-export const PAYMENTS: Payment[] = buildPayments();
+const PAYMENTS: Payment[] = buildPayments();
 
-export type PaymentStats = {
-  menungguCount: number;
-  menungguTotal: number;
-  verifiedCount: number;
-  verifiedTotal: number;
-  rejectedCount: number;
-  totalCount: number;
-};
+const DESTINATION_ACCOUNTS: DestinationAccount[] = [
+  { bank: "BCA", number: "123-456-9900", owner: "PT Agro Petik Jeruk" },
+  { bank: "BRI", number: "3021-01-008875-53-21", owner: "PT Agro Petik Jeruk" },
+];
 
-export function computePaymentStats(payments: Payment[]): PaymentStats {
+const STATUS_FILTERS: Array<{
+  key: StatusFilter;
+  label: (menunggu: number) => string;
+}> = [
+  { key: "menunggu", label: (n) => `Perlu Verifikasi (${n})` },
+  { key: "semua", label: () => "Semua" },
+  { key: "diverifikasi", label: () => "Diverifikasi" },
+  { key: "ditolak", label: () => "Ditolak" },
+];
+
+/* ==================== Helper ==================== */
+
+export const rupiah = (value: number) => `Rp ${value.toLocaleString("id-ID")}`;
+
+/** Nomor WhatsApp siap pakai untuk tombol "Chat WA". */
+export function waLink(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^0/, "62");
+  return `https://wa.me/${digits}`;
+}
+
+function computePaymentStats(payments: Payment[]): PaymentStats {
   const menunggu = payments.filter((p) => p.status === "Menunggu");
   const verified = payments.filter((p) => p.status === "Diverifikasi");
   const rejected = payments.filter((p) => p.status === "Ditolak");
@@ -305,15 +322,159 @@ export function computePaymentStats(payments: Payment[]): PaymentStats {
   };
 }
 
-export const DESTINATION_ACCOUNTS = [
-  { bank: "BCA", number: "123-456-9900", owner: "PT Agro Petik Jeruk" },
-  { bank: "BRI", number: "3021-01-008875-53-21", owner: "PT Agro Petik Jeruk" },
-];
+/* ==================== Hook ==================== */
 
-/** Nomor WhatsApp siap pakai untuk tombol "Chat WA". */
-export function waLink(phone: string): string {
-  const digits = phone.replace(/\D/g, "").replace(/^0/, "62");
-  return `https://wa.me/${digits}`;
+export function usePayments() {
+  const [payments, setPayments] = useState<Payment[]>(PAYMENTS);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
+  const [paketFilter, setPaketFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [slipFor, setSlipFor] = useState<Payment | null>(null);
+  const [rejectFor, setRejectFor] = useState<Payment | null>(null);
+  const [rowMenu, setRowMenu] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+
+  const stats = useMemo(() => computePaymentStats(payments), [payments]);
+
+  const paketOptions = useMemo(() => {
+    const unique = Array.from(new Set(payments.map((p) => p.paket)));
+    return ["ALL", ...unique];
+  }, [payments]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const digits = q.replace(/\D/g, "");
+
+    return payments.filter((payment) => {
+      const matchQuery =
+        q === "" ||
+        payment.customer.toLowerCase().includes(q) ||
+        payment.id.toLowerCase().includes(q) ||
+        (digits !== "" && payment.wa.replace(/\D/g, "").includes(digits));
+
+      const matchStatus =
+        statusFilter === "semua" ||
+        (statusFilter === "menunggu" && payment.status === "Menunggu") ||
+        (statusFilter === "diverifikasi" &&
+          payment.status === "Diverifikasi") ||
+        (statusFilter === "ditolak" && payment.status === "Ditolak");
+
+      const matchPaket =
+        paketFilter === "ALL" || payment.paket === paketFilter;
+
+      return matchQuery && matchStatus && matchPaket;
+    });
+  }, [payments, query, statusFilter, paketFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(start, start + PAGE_SIZE);
+
+  // Jendela 4 nomor halaman (seperti design: 1 2 3 4).
+  const pageNumbers = useMemo(() => {
+    const from = Math.max(1, Math.min(currentPage - 1, totalPages - 3));
+    const to = Math.min(totalPages, from + 3);
+    const numbers: number[] = [];
+    for (let n = from; n <= to; n++) numbers.push(n);
+    return numbers;
+  }, [currentPage, totalPages]);
+
+  function updateStatus(id: string, status: PaymentStatus, paid?: boolean) {
+    setPayments((current) =>
+      current.map((payment) =>
+        payment.id === id ? { ...payment, status, paid } : payment,
+      ),
+    );
+  }
+
+  function changeQuery(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
+
+  function changeStatusFilter(value: StatusFilter) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
+  function changePaketFilter(value: string) {
+    setPaketFilter(value);
+    setPage(1);
+  }
+
+  function confirmReject() {
+    if (!rejectFor) return;
+    updateStatus(rejectFor.id, "Ditolak", false);
+    setRejectFor(null);
+  }
+
+  function toggleRowMenu(id: string) {
+    setRowMenu((current) => (current === id ? null : id));
+  }
+
+  function handleRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+
+    window.setTimeout(() => {
+      setPayments(PAYMENTS);
+      setQuery("");
+      setStatusFilter("semua");
+      setPaketFilter("ALL");
+      setPage(1);
+      setRefreshing(false);
+      setRowMenu(null);
+      setLastRefresh(
+        new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+    }, 700);
+  }
+
+  return {
+    // data
+    stats,
+    destinationAccounts: DESTINATION_ACCOUNTS,
+    statusFilters: STATUS_FILTERS,
+    paketOptions,
+    visible,
+    totalFiltered: filtered.length,
+
+    // filter
+    query,
+    statusFilter,
+    paketFilter,
+    changeQuery,
+    changeStatusFilter,
+    changePaketFilter,
+
+    // paginasi
+    pageSize: PAGE_SIZE,
+    start,
+    currentPage,
+    totalPages,
+    pageNumbers,
+    setPage,
+
+    // aksi
+    updateStatus,
+    refreshing,
+    lastRefresh,
+    handleRefresh,
+
+    // modal & menu baris
+    slipFor,
+    setSlipFor,
+    rejectFor,
+    setRejectFor,
+    confirmReject,
+    rowMenu,
+    setRowMenu,
+    toggleRowMenu,
+  };
 }
-
-export const rupiah = (value: number) => `Rp ${value.toLocaleString("id-ID")}`;

@@ -1,11 +1,10 @@
-import { Catalog } from "@/components/catalog";
-import { Features } from "@/components/features";
-import { Footer, ReservationCta } from "@/components/footer-cta";
-import { Hero } from "@/components/hero";
-import { Navbar, TopBar } from "@/components/sections";
-import { ScannerSection } from "@/components/scanner";
-import { RouteSection } from "@/components/route-section";
-
+import { Catalog } from "./landing/catalog";
+import { Features } from "./landing/features";
+import { Footer, ReservationCta } from "./landing/footer-cta";
+import { Hero } from "./landing/hero";
+import { Navbar, TopBar } from "./landing/sections";
+import { ScannerSection } from "./landing/scanner";
+import { RouteSection } from "./landing/route-section";
 export default function Home() {
   return (
     <main className="min-h-screen bg-white">

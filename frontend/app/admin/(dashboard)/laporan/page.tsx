@@ -1,4 +1,4 @@
-import { ReportsManager } from "@/components/admin/reports-manager";
+import ReportContents from "./components/report-contents";
 
 export const metadata = {
   title: "Laporan — Dashboard Admin",
@@ -7,7 +7,7 @@ export const metadata = {
 export default function AdminLaporanPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <ReportsManager />
+      <ReportContents />
     </div>
   );
 }
