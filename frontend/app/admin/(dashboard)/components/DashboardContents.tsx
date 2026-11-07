@@ -8,14 +8,20 @@ import StartCard from "./StartCard";
 export default function DashboardContent() {
   const {
     displayName,
+    loading,
+    error,
     stats,
     paymentStatus,
-    totalTransaksi,
     transactions,
     revenue,
     activityLog,
     formatRupiah,
   } = useDashboard();
+
+  const totalTransaksi = paymentStatus.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -27,6 +33,18 @@ export default function DashboardContent() {
         <p className="mt-1 text-sm text-neutral-400">
           Selamat datang kembali, {displayName} 👋
         </p>
+
+        {loading ? (
+          <p className="mt-1 text-xs font-semibold text-neutral-400">
+            Memuat data dashboard…
+          </p>
+        ) : null}
+
+        {error ? (
+          <p className="mt-1 text-xs font-semibold text-red-500">
+            {error} (Data gagal dimuat — pastikan backend &amp; MySQL berjalan)
+          </p>
+        ) : null}
       </div>
 
       {/* Kartu statistik */}

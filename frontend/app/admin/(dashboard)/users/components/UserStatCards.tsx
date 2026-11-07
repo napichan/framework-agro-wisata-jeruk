@@ -1,6 +1,6 @@
 "use client";
 
-import { USER_STATS } from "@/hooks/useUser";
+import { useUserStats } from "@/hooks/useUser";
 import {
   IconArrowUp,
   IconShieldCheck,
@@ -16,35 +16,39 @@ type UserStat = {
   highlight?: boolean;
 };
 
-const USER_STAT_CARDS: UserStat[] = [
-  {
-    label: "Total Pengguna",
-    value: String(USER_STATS.total),
-    note: "+ 12% bulan ini",
-    icon: IconUsers,
-    highlight: true,
-  },
-  {
-    label: "Wisatawan Aktif",
-    value: String(USER_STATS.wisatawan),
-    note: "Tiket online",
-    icon: IconTicket,
-  },
-  {
-    label: "Staf Lapangan",
-    value: String(USER_STATS.staf),
-    note: "Blok jeruk Semen & Keprok",
-    icon: IconUsers,
-  },
-  {
-    label: "Admin Terverifikasi",
-    value: String(USER_STATS.admin),
-    note: "Akses penuh",
-    icon: IconShieldCheck,
-  },
-];
+
 
 export default function UserStatCards() {
+  const { stats } = useUserStats();
+
+  const USER_STAT_CARDS: UserStat[] = [
+    {
+      label: "Total Pengguna",
+      value: String(stats.total),
+      note: "Seluruh akun terdaftar",
+      icon: IconUsers,
+      highlight: true,
+    },
+    {
+      label: "Wisatawan Aktif",
+      value: String(stats.wisatawan),
+      note: "Tiket online",
+      icon: IconTicket,
+    },
+    {
+      label: "Akun Nonaktif",
+      value: String(stats.nonaktif),
+      note: "Inactive / diblokir",
+      icon: IconUsers,
+    },
+    {
+      label: "Admin Terverifikasi",
+      value: String(stats.admin),
+      note: "Akses penuh",
+      icon: IconShieldCheck,
+    },
+  ];
+
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {USER_STAT_CARDS.map((card) => {

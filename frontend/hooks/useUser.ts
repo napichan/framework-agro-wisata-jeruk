@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type {
   AdminUser,
   UserModalMode,
@@ -10,258 +11,198 @@ import type {
   UserStatusFilter,
 } from "@/types/user.types";
 
-/**
- * Data demo Manajemen User.
- * Angka dirancang agar cocok dengan design Figma:
- * - Total pengguna : 248
- * - Wisatawan/User : 214
- * - Staf lapangan  : 26
- * - Admin          : 8
- *
- * Untuk produksi: ganti dengan panggilan API (apiFetch dari @/lib/api).
- */
+const PAGE_SIZE = 7; // sesuai design: "Menampilkan 1-7 dari ... pengguna"
 
-const PAGE_SIZE = 7; // sesuai design: "Menampilkan 1-7 dari 248 pengguna"
-
-/* ==================== 7 baris pertama (persis design) ==================== */
-
-const FEATURED_USERS: AdminUser[] = [
-  {
-    id: "USR-8821",
-    name: "Dinda Maharani",
-    email: "dinda@gmail.com",
-    role: "User",
-    status: "Aktif",
-    lastLogin: "Hari ini, 07:45 WIB",
-    lastDevice: "Mobile App (Android)",
-  },
-  {
-    id: "USR-8822",
-    name: "Raka Pratama",
-    email: "raka@email.com",
-    role: "User",
-    status: "Aktif",
-    lastLogin: "Kemarin, 16:15 WIB",
-    lastDevice: "Website Booking",
-  },
-  {
-    id: "USR-8823",
-    name: "Sinta Wulandari",
-    email: "sinta@gmail.com",
-    role: "User",
-    status: "Aktif",
-    lastLogin: "26 Sep, 11:20 WIB",
-    lastDevice: "Mobile App (iOS)",
-  },
-  {
-    id: "USR-8824",
-    name: "Andi Setiawan",
-    email: "andi@gmail.com",
-    role: "User",
-    status: "Aktif",
-    lastLogin: "25 Sep, 16:04 WIB",
-    lastDevice: "Tiket Loket Masuk",
-  },
-  {
-    id: "USR-8825",
-    name: "Nabila Rahma",
-    email: "nabila@gmail.com",
-    role: "User",
-    status: "Aktif",
-    lastLogin: "24 Sep, 10:11 WIB",
-    lastDevice: "Mobile App (Android)",
-  },
-  {
-    id: "ADM-0001",
-    name: "Admin Kebun",
-    email: "admin@gmail.com",
-    role: "Admin",
-    status: "Aktif",
-    lastLogin: "Sedang Online",
-    lastDevice: "Web Chrome (Ubuntu)",
-    verified: true,
-  },
-  {
-    id: "STF-1029",
-    name: "Budi Santoso",
-    email: "budi.kebun@agropetikjeruk.id",
-    role: "Staf Kebun",
-    status: "Aktif",
-    lastLogin: "Hari ini, 07:18 WIB",
-    lastDevice: "Handheld Scanner (Zona B)",
-  },
-];
-
-/* ==================== Pool untuk data generate ==================== */
-
-const FIRST_NAMES = [
-  "Dewi", "Fajar", "Rizky", "Putri", "Bayu", "Intan", "Yoga", "Lestari",
-  "Hendra", "Melati", "Arif", "Citra", "Dimas", "Rina", "Taufik", "Wulan",
-  "Ilham", "Vina", "Galih", "Anisa", "Reza", "Fitri", "Bagus", "Novi",
-  "Sari", "Irfan", "Ayu", "Joko", "Mira", "Anton", "Selly", "Doni",
-  "Ratna", "Eko", "Lia", "Yusuf", "Tari", "Rendi", "Wati", "Gilang",
-];
-
-const LAST_NAMES = [
-  "Saputra", "Permata", "Hidayat", "Nugroho", "Susanto", "Anggraini",
-  "Kusuma", "Firmansyah", "Putri", "Ramadhan", "Oktaviani", "Sanjaya",
-  "Hakim", "Puspita", "Maulana", "Utami", "Santoso", "Wirawan", "Negara",
-  "Handayani", "Prakoso", "Kurnia", "Amelia", "Setiadi", "Wibowo",
-  "Mulyani", "Suryana", "Halim", "Chandra", "Gunawan", "Pertiwi",
-  "Sihombing", "Muhardjo", "Kartika", "Lesmana", "Hartono", "Wijaya",
-  "Safitri", "Nugraha", "Pramesti",
-];
-
-const DOMAINS = ["gmail.com", "email.com", "yahoo.com"];
-
-const DEVICES = [
-  "Mobile App (Android)",
-  "Mobile App (iOS)",
-  "Website Booking",
-  "Tiket Loket Masuk",
-  "Web Chrome (Windows)",
-] as const;
-
-const LOGIN_STAMPS = [
-  "Hari ini, 09:30 WIB",
-  "Hari ini, 08:12 WIB",
-  "Kemarin, 19:40 WIB",
-  "Kemarin, 14:05 WIB",
-  "26 Sep, 09:55 WIB",
-  "25 Sep, 13:22 WIB",
-  "24 Sep, 17:48 WIB",
-  "23 Sep, 10:07 WIB",
-  "22 Sep, 15:33 WIB",
-  "21 Sep, 08:26 WIB",
-] as const;
-
-/* ==================== Generator deterministik ==================== */
-
-function pick<T>(pool: readonly T[], index: number): T {
-  return pool[index % pool.length];
-}
-
-function buildUsers(): AdminUser[] {
-  const users: AdminUser[] = [...FEATURED_USERS];
-
-  let userNo = 8826; // lanjutan USR-8825
-  let stafNo = 1030; // lanjutan STF-1029
-  let admNo = 2; // lanjutan ADM-0001
-
-  // Target: 214 User, 26 Staf Kebun, 8 Admin (total 248).
-  const targets: Array<{ role: UserRole; count: number }> = [
-    { role: "User", count: 214 - 5 }, // 5 sudah ada di FEATURED
-    { role: "Staf Kebun", count: 26 - 1 },
-    { role: "Admin", count: 8 - 1 },
-  ];
-
-  let i = 0;
-  for (const target of targets) {
-    for (let n = 0; n < target.count; n++, i++) {
-      const first = pick(FIRST_NAMES, i);
-      const last = pick(LAST_NAMES, Math.floor(i / FIRST_NAMES.length));
-      const name = `${first} ${last}`;
-
-      let id: string;
-      let email: string;
-      let device: string;
-
-      if (target.role === "User") {
-        id = `USR-${userNo++}`;
-        email = `${first.toLowerCase()}.${last.toLowerCase()}@${pick(DOMAINS, i)}`;
-        device = pick(DEVICES, i);
-      } else if (target.role === "Staf Kebun") {
-        id = `STF-${stafNo++}`;
-        email = `${first.toLowerCase()}.${last.toLowerCase()}@agropetikjeruk.id`;
-        device = "Handheld Scanner (Zona B)";
-      } else {
-        id = `ADM-${String(admNo++).padStart(4, "0")}`;
-        email = `${first.toLowerCase()}.${last.toLowerCase()}@admin.agropetikjeruk.id`;
-        device = "Web Chrome (Ubuntu)";
-      }
-
-      users.push({
-        id,
-        name,
-        email,
-        role: target.role,
-        // Sekitar 8% tidak aktif supaya filter status ada isinya.
-        status: i % 13 === 4 ? "Nonaktif" : "Aktif",
-        lastLogin: pick(LOGIN_STAMPS, i),
-        lastDevice: device,
-        verified: target.role === "Admin",
-      });
-    }
-  }
-
-  return users;
-}
-
-const ADMIN_USERS: AdminUser[] = buildUsers();
-
-export const USER_STATS = {
-  total: ADMIN_USERS.length,
-  wisatawan: ADMIN_USERS.filter((u) => u.role === "User").length,
-  staf: ADMIN_USERS.filter((u) => u.role === "Staf Kebun").length,
-  admin: ADMIN_USERS.filter((u) => u.role === "Admin").length,
+type ApiUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "user";
+  status: "active" | "inactive" | "blocked";
+  created_at: string;
+  updated_at: string;
 };
 
-const ROLE_OPTIONS: UserRoleFilter[] = [
-  "Semua Role",
-  "User",
-  "Staf Kebun",
-  "Admin",
-];
+type UsersResponse = {
+  data: ApiUser[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
 
-const STATUS_OPTIONS: UserStatusFilter[] = [
-  "Semua Status",
-  "Aktif",
-  "Nonaktif",
-];
+type StatsResponse = {
+  data: {
+    admin: number;
+    user: number;
+    total: number;
+    inactive: number;
+  };
+};
 
-/* ==================== Hook ==================== */
+export type UserStats = {
+  total: number;
+  wisatawan: number;
+  nonaktif: number;
+  admin: number;
+};
+
+const ROLE_LABEL: Record<ApiUser["role"], UserRole> = {
+  user: "User",
+  admin: "Admin",
+};
+
+const STATUS_LABEL: Record<ApiUser["status"], "Aktif" | "Nonaktif"> = {
+  active: "Aktif",
+  inactive: "Nonaktif",
+  blocked: "Nonaktif",
+};
+
+function mapUser(row: ApiUser): AdminUser {
+  return {
+    id: String(row.id),
+    name: row.name,
+    email: row.email,
+    role: ROLE_LABEL[row.role],
+    status: STATUS_LABEL[row.status],
+    // Riwayat login/perangkat belum tersimpan di database.
+    lastLogin: "-",
+    lastDevice: "-",
+    verified: row.role === "admin",
+  };
+}
+
+const ROLE_OPTIONS: UserRoleFilter[] = ["Semua Role", "User", "Admin"];
+
+const STATUS_OPTIONS: UserStatusFilter[] = ["Semua Status", "Aktif", "Nonaktif"];
+
+function roleParam(role: UserRoleFilter): string {
+  if (role === "User") return "user";
+  if (role === "Admin") return "admin";
+  return "";
+}
+
+function statusParam(status: UserStatusFilter): string {
+  if (status === "Aktif") return "active";
+  if (status === "Nonaktif") return "inactive,blocked";
+  return "";
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
+/* ==================== Statistik (kartu) ==================== */
+
+export function useUserStats() {
+  const [stats, setStats] = useState<UserStats>({
+    total: 0,
+    wisatawan: 0,
+    nonaktif: 0,
+    admin: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await apiFetch<StatsResponse>("/api/admin/users/stats");
+
+      setStats({
+        total: res.data.total,
+        wisatawan: res.data.user,
+        nonaktif: res.data.inactive,
+        admin: res.data.admin,
+      });
+    } catch (err) {
+      setError(errorMessage(err, "Gagal memuat statistik pengguna."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { stats, loading, error, reload: load };
+}
+
+/* ==================== Hook utama ==================== */
 
 export function useUser() {
-  const [users, setUsers] = useState<AdminUser[]>(ADMIN_USERS);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<UserRoleFilter>("Semua Role");
   const [status, setStatus] = useState<UserStatusFilter>("Semua Status");
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<UserModalState>(null);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const load = useCallback(async () => {
+    setError(null);
 
-    return users.filter((user) => {
-      const matchSearch =
-        query === "" ||
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.id.toLowerCase().includes(query);
-
-      const matchRole = role === "Semua Role" || user.role === role;
-      const matchStatus = status === "Semua Status" || user.status === status;
-
-      return matchSearch && matchRole && matchStatus;
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(PAGE_SIZE),
     });
-  }, [users, search, role, status]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
+    const query = search.trim();
+    const roleValue = roleParam(role);
+    const statusValue = statusParam(status);
+
+    if (query) params.set("search", query);
+    if (roleValue) params.set("role", roleValue);
+    if (statusValue) params.set("status", statusValue);
+
+    try {
+      const res = await apiFetch<UsersResponse>(`/api/admin/users?${params}`);
+
+      setUsers(res.data.map(mapUser));
+      setPagination({
+        page: res.pagination.page,
+        totalPages: res.pagination.totalPages,
+        total: res.pagination.total,
+      });
+    } catch (err) {
+      setError(errorMessage(err, "Gagal memuat data pengguna."));
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, role, status]);
+
+  // Jeda singkat supaya mengetik tidak membanjiri request.
+  useEffect(() => {
+    setLoading(true);
+
+    const timer = setTimeout(() => {
+      load();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [load]);
+
+  const currentPage = pagination.page;
   const start = (currentPage - 1) * PAGE_SIZE;
-  const visible = filtered.slice(start, start + PAGE_SIZE);
+  const from = users.length === 0 ? 0 : start + 1;
+  const to = start + users.length;
 
-  // Nomor halaman: jendela 3 di sekitar halaman aktif (seperti design).
-  const pageNumbers = useMemo(() => {
-    const from = Math.max(1, Math.min(currentPage - 1, totalPages - 2));
-    const to = Math.min(totalPages, from + 2);
+  const pageNumbers = useCallback(() => {
+    const fromPage = Math.max(1, Math.min(currentPage - 1, pagination.totalPages - 2));
+    const toPage = Math.min(pagination.totalPages, fromPage + 2);
     const numbers: number[] = [];
-    for (let n = from; n <= to; n++) numbers.push(n);
+    for (let n = fromPage; n <= toPage; n++) numbers.push(n);
     return numbers;
-  }, [currentPage, totalPages]);
-
-  const from = filtered.length === 0 ? 0 : start + 1;
-  const to = Math.min(start + PAGE_SIZE, filtered.length);
+  }, [currentPage, pagination.totalPages])();
 
   function changeSearch(value: string) {
     setSearch(value);
@@ -286,11 +227,31 @@ export function useUser() {
     setModal(null);
   }
 
-  function saveUser(updated: AdminUser) {
-    setUsers((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item)),
-    );
-    setModal(null);
+  async function saveUser(updated: AdminUser) {
+    setError(null);
+
+    try {
+      await apiFetch(`/api/admin/users/${updated.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: updated.name,
+          email: updated.email,
+          role: updated.role === "Admin" ? "admin" : "user",
+        }),
+      });
+
+      await apiFetch(`/api/admin/users/${updated.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: updated.status === "Aktif" ? "active" : "inactive",
+        }),
+      });
+
+      setModal(null);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, "Gagal menyimpan perubahan pengguna."));
+    }
   }
 
   function exportCsv() {
@@ -304,17 +265,17 @@ export function useUser() {
       "Perangkat",
     ];
 
-    const rows = filtered.map((user) =>
+    const rows = users.map((user) =>
       [
         user.id,
         user.name,
         user.email,
         user.role,
         user.status,
-        user.lastLogin,
-        user.lastDevice,
+        user.lastLogin ?? "-",
+        user.lastDevice ?? "-",
       ]
-        .map((cell) => `"${cell.replace(/"/g, '""')}"`)
+        .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
         .join(","),
     );
 
@@ -331,6 +292,10 @@ export function useUser() {
   }
 
   return {
+    // status muat
+    loading,
+    error,
+
     // filter
     search,
     role,
@@ -341,16 +306,16 @@ export function useUser() {
     roleOptions: ROLE_OPTIONS,
     statusOptions: STATUS_OPTIONS,
 
-    // data
-    users: visible,
-    totalFiltered: filtered.length,
+    // data (satu halaman dari server)
+    users,
+    totalFiltered: pagination.total,
 
     // paginasi
     start,
     from,
     to,
     currentPage,
-    totalPages,
+    totalPages: pagination.totalPages,
     pageNumbers,
     setPage,
 
@@ -360,7 +325,7 @@ export function useUser() {
     closeModal,
     saveUser,
 
-    // export
+    // export (baris halaman aktif)
     exportCsv,
   };
 }

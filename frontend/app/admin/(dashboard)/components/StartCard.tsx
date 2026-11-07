@@ -37,23 +37,25 @@ export default function StartCard({ stat }: { stat: DashboardStat }) {
         {stat.value}
       </p>
 
-      <p className="mt-2 flex items-center gap-1 text-[11px] text-neutral-400">
-        <span className="flex items-center gap-0.5 font-bold text-grove-600">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={3}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-2.5 w-2.5"
-          >
-            <path d="M5 15l7-7 7 7" />
-          </svg>
-          {stat.delta}
-        </span>
-        dari bulan lalu
-      </p>
+      {stat.delta ? (
+        <p className="mt-2 flex items-center gap-1 text-[11px] text-neutral-400">
+          <span className="flex items-center gap-0.5 font-bold text-grove-600">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-2.5 w-2.5"
+            >
+              <path d="M5 15l7-7 7 7" />
+            </svg>
+            {stat.delta}
+          </span>
+          dari bulan lalu
+        </p>
+      ) : null}
     </div>
   );
 }

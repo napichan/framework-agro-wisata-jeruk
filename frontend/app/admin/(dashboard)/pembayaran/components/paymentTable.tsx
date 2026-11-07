@@ -43,7 +43,12 @@ export default function PaymentTable() {
     totalPages,
     pageNumbers,
     setPage,
-    updateStatus,
+    approve,
+    reopen,
+    toggleQr,
+    isQrMarked,
+    loading,
+    error,
     refreshing,
     lastRefresh,
     handleRefresh,
@@ -285,7 +290,16 @@ export default function PaymentTable() {
             </thead>
 
             <tbody className="divide-y divide-neutral-100">
-              {visible.length > 0 ? (
+              {loading || error ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-5 py-14 text-center text-sm text-neutral-400"
+                  >
+                    {error ?? "Memuat data pembayaran..."}
+                  </td>
+                </tr>
+              ) : visible.length > 0 ? (
                 visible.map((payment, index) => {
                   const statusStyle = STATUS_STYLE[payment.status];
 
@@ -343,11 +357,6 @@ export default function PaymentTable() {
                           {rupiah(payment.nominal)}
                         </p>
 
-                        {payment.nominalNote ? (
-                          <p className="mt-1 text-[11px] font-medium text-red-500">
-                            {payment.nominalNote}
-                          </p>
-                        ) : null}
                       </td>
 
                       {/* Bukti slip */}
@@ -389,9 +398,7 @@ export default function PaymentTable() {
                             <>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  updateStatus(payment.id, "Diverifikasi", false)
-                                }
+                                onClick={() => approve(payment.id)}
                                 className="flex items-center gap-1.5 rounded-lg bg-grove-700 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-grove-800"
                               >
                                 <IconCheck className="h-3.5 w-3.5" />
@@ -412,21 +419,17 @@ export default function PaymentTable() {
                             <>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  updateStatus(
-                                    payment.id,
-                                    "Diverifikasi",
-                                    !payment.paid,
-                                  )
-                                }
+                                onClick={() => toggleQr(payment.id)}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                                  payment.paid
+                                  isQrMarked(payment.id)
                                     ? "bg-grove-50 text-grove-600 ring-1 ring-grove-200"
                                     : "border border-grove-300 text-grove-700 hover:bg-grove-50"
                                 }`}
                               >
                                 <IconCheck className="h-3.5 w-3.5" />
-                                {payment.paid ? "QR Ditandai" : "Tandai QR"}
+                                {isQrMarked(payment.id)
+                                  ? "QR Ditandai"
+                                  : "Tandai QR"}
                               </button>
 
                               <button
@@ -454,9 +457,7 @@ export default function PaymentTable() {
 
                               <button
                                 type="button"
-                                onClick={() =>
-                                  updateStatus(payment.id, "Menunggu")
-                                }
+                                onClick={() => reopen(payment.id)}
                                 className="rounded-lg border border-neutral-200 px-3 py-1.5 text-[11px] font-bold text-neutral-500 transition hover:bg-neutral-50"
                               >
                                 Cek Ulang
@@ -500,10 +501,7 @@ export default function PaymentTable() {
 
                               <button
                                 type="button"
-                                onClick={() => {
-                                  updateStatus(payment.id, "Menunggu");
-                                  setRowMenu(null);
-                                }}
+                                onClick={() => reopen(payment.id)}
                                 className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50"
                               >
                                 <IconRefresh className="h-3.5 w-3.5" />
@@ -522,7 +520,9 @@ export default function PaymentTable() {
                     colSpan={8}
                     className="px-5 py-14 text-center text-sm text-neutral-400"
                   >
-                    Tidak ada pembayaran yang cocok dengan filtermu.
+                    {loading
+                      ? "Memuat data pembayaran..."
+                      : error ?? "Tidak ada pembayaran yang cocok dengan filtermu."}
                   </td>
                 </tr>
               )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type {
   DestinationAccount,
   Payment,
@@ -9,278 +10,75 @@ import type {
   StatusFilter,
 } from "@/types/payments.types";
 
-/**
- * Data demo Verifikasi Pembayaran.
- * Angka dirancang agar cocok dengan design Figma:
- * - Menunggu verifikasi  : 14 transaksi — Total Rp 4.999.000
- * - Diverifikasi hari ini: 38 transaksi — Total Rp 12.400.000
- * - Ditolak              : 2 transaksi  — Total 54 pembayaran
- *
- * Untuk produksi: ganti dengan panggilan API (apiFetch dari @/lib/api).
- */
-
 const PAGE_SIZE = 10;
 
-/* ==================== 5 baris pertama (persis design) ==================== */
-
-const FEATURED_PAYMENTS: Payment[] = [
-  {
-    id: "TRX-10241",
-    date: "28 Okt 2024",
-    time: "09:15 WIB",
-    customer: "Budi Hartono",
-    wa: "0812-3344-5566",
-    paket: "Paket Keluarga (5 Pax)",
-    bank: "BCA",
-    senderName: "Sutrisno",
-    senderAccount: "123-456-9900",
-    infoNote: "Transfer rek. atas nama sendiri",
-    nominal: 450_250,
-    status: "Menunggu",
-    hasSlip: true,
-  },
-  {
-    id: "TRX-10240",
-    date: "28 Okt 2024",
-    time: "08:20 WIB",
-    customer: "Siti Aminah",
-    wa: "0813-7788-9911",
-    paket: "Paket Sendiri (2 Pax)",
-    bank: "BCA",
-    senderName: "Siti Aminah",
-    senderAccount: "0099-8877-6655",
-    infoNote: "Tujuan: MANDIRI 0876-5432 a.n Agro Wisata",
-    nominal: 219_000,
-    status: "Menunggu",
-    hasSlip: true,
-  },
-  {
-    id: "TRX-10239",
-    date: "28 Okt 2024",
-    time: "07:48 WIB",
-    customer: "SMP IT Insan Cita (Bpk. Jaelani)",
-    wa: "0857-2211-4433",
-    paket: "Paket Edukasi (30 Pax)",
-    bank: "BCA",
-    senderName: "Yayan S",
-    senderAccount: "678-0101",
-    infoNote: "Tujuan: BCA 777 a.n Agro Petik Jeruk",
-    nominal: 2_425_000,
-    status: "Menunggu",
-    hasSlip: true,
-  },
-  {
-    id: "TRX-10238",
-    date: "28 Okt 2024",
-    time: "07:05 WIB",
-    customer: "Denny Sumargo",
-    wa: "0821-5566-7788",
-    paket: "Tiket Masuk Reguler (4 Tiket)",
-    bank: "BRI",
-    senderName: "Denny S",
-    senderAccount: "3021-01-008875",
-    infoNote: "Verifikasi data rekening",
-    nominal: 189_000,
-    status: "Diverifikasi",
-    hasSlip: true,
-    paid: true,
-  },
-  {
-    id: "TRX-10237",
-    date: "27 Okt 2024",
-    time: "19:30 WIB",
-    customer: "Hendri Kurnia",
-    wa: "0878-9900-1122",
-    paket: "Paket Petik Jeruk (3 Pax)",
-    bank: "BNI",
-    senderName: "Hendri K",
-    senderAccount: "0099-12-77",
-    infoNote: "Nominal tidak sesuai",
-    nominal: 99_000,
-    nominalNote: "Butuh bukti ulang",
-    status: "Ditolak",
-    hasSlip: false,
-  },
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
 
-/* ==================== Pool untuk data generate ==================== */
+const STATUS_LABEL: Record<StatusFilter, PaymentStatus | null> = {
+  semua: null,
+  menunggu: "Menunggu",
+  diverifikasi: "Diverifikasi",
+  ditolak: "Ditolak",
+};
 
-const FIRST_NAMES = [
-  "Agus", "Dewi", "Fajar", "Rizky", "Putri", "Bayu", "Intan", "Yoga",
-  "Lestari", "Hendra", "Melati", "Arif", "Citra", "Dimas", "Rina", "Taufik",
-  "Wulan", "Ilham", "Vina", "Galih", "Anisa", "Reza", "Fitri", "Bagus",
-];
-
-const LAST_NAMES = [
-  "Wijaya", "Saputra", "Permata", "Hidayat", "Nugroho", "Susanto",
-  "Anggraini", "Kusuma", "Firmansyah", "Ramadhan", "Oktaviani", "Sanjaya",
-  "Hakim", "Puspita", "Maulana", "Utami", "Santoso", "Wirawan",
-];
-
-const PAKETS = [
-  "Tiket Masuk Reguler (2 Tiket)",
-  "Tiket Masuk Reguler (4 Tiket)",
-  "Paket Sendiri (2 Pax)",
-  "Paket Keluarga (5 Pax)",
-  "Paket Petik Jeruk (3 Pax)",
-  "Paket Rombongan (15 Pax)",
-];
-
-const BANKS = ["BCA", "MANDIRI", "BRI", "BNI"];
-
-const WAITING_TIMES = [
-  "07:02 WIB", "06:45 WIB", "06:20 WIB", "05:58 WIB", "05:31 WIB",
-  "05:12 WIB", "04:47 WIB", "04:20 WIB", "03:55 WIB", "03:30 WIB", "03:05 WIB",
-];
-
-const VERIFIED_TIMES = [
-  "21:40 WIB", "20:15 WIB", "18:52 WIB", "17:30 WIB", "16:05 WIB",
-  "14:48 WIB", "13:22 WIB", "12:05 WIB", "10:40 WIB", "09:18 WIB",
-];
-
-const INFO_NOTES = [
-  "Cocok dengan mutasi bank",
-  "Transfer rek. atas nama sendiri",
-  "Pembayaran via mobile banking",
-  "Tujuan: BCA 777 a.n Agro Petik Jeruk",
-  "Verifikasi data rekening",
-];
-
-/* ==================== Nominal ==================== */
-
-/**
- * Total yang ditargetkan per status (sesuai design).
- * Elemen terakhir tiap grup diseimbangkan agar jumlahnya pas.
- */
-const WAITING_TARGET = 4_999_000;
-const VERIFIED_TARGET = 12_400_000;
-
-/** 10 nominal pertama (Menunggu) — sisa 1 item diseimbangkan. */
-const WAITING_POOL = [
-  175_000, 199_000, 145_000, 225_000, 99_000,
-  250_000, 130_000, 210_000, 165_000, 187_500,
-];
-
-/** 36 nominal (Diverifikasi) — sisa 1 item diseimbangkan. */
-const VERIFIED_POOL = [
-  400_000, 375_000, 299_000, 325_000, 350_000, 425_000,
-  210_000, 380_000, 300_000, 265_000, 250_000, 340_000,
-  399_000, 315_000, 275_000, 300_000, 430_000, 360_000,
-  290_000, 345_000, 220_000, 305_000, 385_000, 330_000,
-  280_000, 410_000, 320_000, 355_000, 320_000, 405_000,
-  295_000, 365_000, 445_000, 310_000, 285_000, 300_000,
-];
-
-function sum(values: number[]): number {
-  return values.reduce((total, value) => total + value, 0);
+/** "2024-10-28T09:15:00.000Z" -> "28 Okt 2024" (aman untuk SSR/CSR). */
+function formatDateID(iso: string): string {
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  return `${Number(day)} ${MONTH_ABBR[Number(month) - 1]} ${year}`;
 }
 
-/**
- * Gabungkan pool dengan 1 nilai penyeimbang sehingga total grup
- * tepat sama dengan target design.
- */
-function balanced(pool: number[], target: number): number[] {
-  const last = target - sum(pool);
-  if (last <= 0) {
-    throw new Error(`Pool melebihi target (sisa ${last})`);
-  }
-  return [...pool, last];
+/** ISO -> "09.15 WIB" (diambil dari jam data, bukan zona lokal). */
+function formatTimeWIB(iso: string): string {
+  return `${iso.slice(11, 16).replace(":", ".")} WIB`;
 }
 
-const WAITING_NOMINALS = balanced(
-  WAITING_POOL,
-  WAITING_TARGET -
-    sum(
-      FEATURED_PAYMENTS.filter((p) => p.status === "Menunggu").map(
-        (p) => p.nominal,
-      ),
-    ),
-);
+type ApiPayment = {
+  id: number;
+  booking_id: number;
+  payment_method: string;
+  amount: string;
+  proof_path: string | null;
+  status: "pending" | "verified" | "rejected";
+  rejection_reason: string | null;
+  created_at: string;
+  booking_code: string;
+  package_name: string;
+  visit_date: string;
+  visitor_count: number;
+  customer_name: string;
+  customer_email: string;
+};
 
-const VERIFIED_NOMINALS = balanced(
-  VERIFIED_POOL,
-  VERIFIED_TARGET -
-    sum(
-      FEATURED_PAYMENTS.filter((p) => p.status === "Diverifikasi").map(
-        (p) => p.nominal,
-      ),
-    ),
-);
+type PaymentsResponse = {
+  total: number;
+  data: ApiPayment[];
+};
 
-/* ==================== Generator deterministik ==================== */
+const STATUS_MAP: Record<ApiPayment["status"], PaymentStatus> = {
+  pending: "Menunggu",
+  verified: "Diverifikasi",
+  rejected: "Ditolak",
+};
 
-function buildPayments(): Payment[] {
-  const payments: Payment[] = [...FEATURED_PAYMENTS];
-  let counter = 10236; // lanjutan TRX-10237 (descending)
-
-  // 14 menunggu = 3 featured + 11 generate
-  for (let i = 0; i < WAITING_NOMINALS.length; i++, counter--) {
-    const first = FIRST_NAMES[i % FIRST_NAMES.length];
-    const last =
-      LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
-
-    payments.push({
-      id: `TRX-${counter}`,
-      date: "28 Okt 2024",
-      time: WAITING_TIMES[i] ?? "02:45 WIB",
-      customer: `${first} ${last}`,
-      wa: `081${i % 9}-${1000 + i}-${2000 + i}`,
-      paket: PAKETS[i % PAKETS.length],
-      bank: BANKS[i % BANKS.length],
-      senderName: `${first} ${last}`,
-      senderAccount: `${100 + i}-${200 + i}-${300 + i}`,
-      infoNote: INFO_NOTES[i % INFO_NOTES.length],
-      nominal: WAITING_NOMINALS[i],
-      status: "Menunggu",
-      hasSlip: i % 7 !== 6, // sesekali tanpa slip
-    });
-  }
-
-  // 38 diverifikasi = 1 featured + 37 generate
-  for (let i = 0; i < VERIFIED_NOMINALS.length; i++, counter--) {
-    const first = FIRST_NAMES[(i + 7) % FIRST_NAMES.length];
-    const last = LAST_NAMES[(i + 3) % LAST_NAMES.length];
-
-    payments.push({
-      id: `TRX-${counter}`,
-      date: i % 3 === 0 ? "27 Okt 2024" : "28 Okt 2024",
-      time: VERIFIED_TIMES[i % VERIFIED_TIMES.length],
-      customer: `${first} ${last}`,
-      wa: `085${i % 9}-${3000 + i}-${4000 + i}`,
-      paket: PAKETS[(i + 2) % PAKETS.length],
-      bank: BANKS[(i + 1) % BANKS.length],
-      senderName: `${first} ${last}`,
-      senderAccount: `${400 + i}-${500 + i}-${600 + i}`,
-      infoNote: INFO_NOTES[(i + 2) % INFO_NOTES.length],
-      nominal: VERIFIED_NOMINALS[i],
-      status: "Diverifikasi",
-      hasSlip: true,
-      paid: i % 4 !== 3,
-    });
-  }
-
-  // 2 ditolak = 1 featured + 1 generate
-  payments.push({
-    id: `TRX-${counter}`,
-    date: "27 Okt 2024",
-    time: "15:12 WIB",
-    customer: "Rudi Hartanto",
-    wa: "0895-3344-1122",
-    paket: "Paket Rombongan (15 Pax)",
-    bank: "MANDIRI",
-    senderName: "Rudi H",
-    senderAccount: "9911-22-33",
-    infoNote: "Nominal tidak sesuai",
-    nominal: 150_000,
-    nominalNote: "Butuh bukti ulang",
-    status: "Ditolak",
-    hasSlip: true,
-  });
-
-  return payments;
+function mapPayment(row: ApiPayment): Payment {
+  return {
+    id: String(row.id),
+    bookingCode: row.booking_code,
+    date: formatDateID(row.created_at),
+    time: formatTimeWIB(row.created_at),
+    customer: row.customer_name,
+    paket: row.package_name,
+    bank: row.payment_method,
+    nominal: Number(row.amount),
+    status: STATUS_MAP[row.status],
+    hasSlip: Boolean(row.proof_path),
+    proofPath: row.proof_path ?? undefined,
+    infoNote: row.rejection_reason ?? undefined,
+  };
 }
-
-const PAYMENTS: Payment[] = buildPayments();
 
 const DESTINATION_ACCOUNTS: DestinationAccount[] = [
   { bank: "BCA", number: "123-456-9900", owner: "PT Agro Petik Jeruk" },
@@ -301,10 +99,16 @@ const STATUS_FILTERS: Array<{
 
 export const rupiah = (value: number) => `Rp ${value.toLocaleString("id-ID")}`;
 
-/** Nomor WhatsApp siap pakai untuk tombol "Chat WA". */
-export function waLink(phone: string): string {
+/** Nomor WhatsApp siap pakai untuk tombol "Chat WA" ("#" bila tak ada data). */
+export function waLink(phone?: string): string {
+  if (!phone) return "#";
+
   const digits = phone.replace(/\D/g, "").replace(/^0/, "62");
   return `https://wa.me/${digits}`;
+}
+
+function sum(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
 }
 
 function computePaymentStats(payments: Payment[]): PaymentStats {
@@ -322,10 +126,16 @@ function computePaymentStats(payments: Payment[]): PaymentStats {
   };
 }
 
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 /* ==================== Hook ==================== */
 
 export function usePayments() {
-  const [payments, setPayments] = useState<Payment[]>(PAYMENTS);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
   const [paketFilter, setPaketFilter] = useState("ALL");
@@ -335,6 +145,33 @@ export function usePayments() {
   const [rowMenu, setRowMenu] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+  // Penanda "QR Ditandai" — state klien, belum punya kolom di database.
+  const [qrMarked, setQrMarked] = useState<Record<string, boolean>>({});
+
+  const load = useCallback(async () => {
+    setError(null);
+
+    try {
+      const res = await apiFetch<PaymentsResponse>("/api/admin/payments");
+
+      setPayments(res.data.map(mapPayment));
+      setLastRefresh(
+        new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+    } catch (err) {
+      setError(errorMessage(err, "Gagal memuat data pembayaran."));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const stats = useMemo(() => computePaymentStats(payments), [payments]);
 
@@ -345,21 +182,17 @@ export function usePayments() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const digits = q.replace(/\D/g, "");
 
     return payments.filter((payment) => {
       const matchQuery =
         q === "" ||
         payment.customer.toLowerCase().includes(q) ||
-        payment.id.toLowerCase().includes(q) ||
-        (digits !== "" && payment.wa.replace(/\D/g, "").includes(digits));
+        payment.bookingCode.toLowerCase().includes(q) ||
+        payment.id.toLowerCase().includes(q);
 
       const matchStatus =
         statusFilter === "semua" ||
-        (statusFilter === "menunggu" && payment.status === "Menunggu") ||
-        (statusFilter === "diverifikasi" &&
-          payment.status === "Diverifikasi") ||
-        (statusFilter === "ditolak" && payment.status === "Ditolak");
+        payment.status === STATUS_LABEL[statusFilter];
 
       const matchPaket =
         paketFilter === "ALL" || payment.paket === paketFilter;
@@ -382,12 +215,52 @@ export function usePayments() {
     return numbers;
   }, [currentPage, totalPages]);
 
-  function updateStatus(id: string, status: PaymentStatus, paid?: boolean) {
-    setPayments((current) =>
-      current.map((payment) =>
-        payment.id === id ? { ...payment, status, paid } : payment,
-      ),
-    );
+  /* ==================== Aksi ==================== */
+
+  async function approve(id: string) {
+    setError(null);
+
+    try {
+      await apiFetch(`/api/admin/payments/${id}/verify`, { method: "PATCH" });
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, "Gagal memverifikasi pembayaran."));
+    }
+  }
+
+  async function confirmReject(reason: string) {
+    if (!rejectFor) return;
+
+    setError(null);
+
+    try {
+      await apiFetch(`/api/admin/payments/${rejectFor.id}/reject`, {
+        method: "PATCH",
+        body: JSON.stringify({ reason }),
+      });
+
+      setRejectFor(null);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, "Gagal menolak pembayaran."));
+    }
+  }
+
+  async function reopen(id: string) {
+    setError(null);
+
+    try {
+      await apiFetch(`/api/admin/payments/${id}/reopen`, { method: "PATCH" });
+      setRowMenu(null);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, "Gagal mengajukan ulang pembayaran."));
+    }
+  }
+
+  // Penanda QR hanya di sisi klien (belum tersimpan di database).
+  function toggleQr(id: string) {
+    setQrMarked((current) => ({ ...current, [id]: !current[id] }));
   }
 
   function changeQuery(value: string) {
@@ -405,39 +278,17 @@ export function usePayments() {
     setPage(1);
   }
 
-  function confirmReject() {
-    if (!rejectFor) return;
-    updateStatus(rejectFor.id, "Ditolak", false);
-    setRejectFor(null);
-  }
-
-  function toggleRowMenu(id: string) {
-    setRowMenu((current) => (current === id ? null : id));
-  }
-
-  function handleRefresh() {
+  async function handleRefresh() {
     if (refreshing) return;
-    setRefreshing(true);
 
-    window.setTimeout(() => {
-      setPayments(PAYMENTS);
-      setQuery("");
-      setStatusFilter("semua");
-      setPaketFilter("ALL");
-      setPage(1);
-      setRefreshing(false);
-      setRowMenu(null);
-      setLastRefresh(
-        new Date().toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      );
-    }, 700);
+    setRefreshing(true);
+    await load();
   }
 
   return {
     // data
+    loading,
+    error,
     stats,
     destinationAccounts: DESTINATION_ACCOUNTS,
     statusFilters: STATUS_FILTERS,
@@ -462,7 +313,11 @@ export function usePayments() {
     setPage,
 
     // aksi
-    updateStatus,
+    approve,
+    confirmReject,
+    reopen,
+    toggleQr,
+    isQrMarked: (id: string) => Boolean(qrMarked[id]),
     refreshing,
     lastRefresh,
     handleRefresh,
@@ -472,9 +327,9 @@ export function usePayments() {
     setSlipFor,
     rejectFor,
     setRejectFor,
-    confirmReject,
     rowMenu,
     setRowMenu,
-    toggleRowMenu,
+    toggleRowMenu: (id: string) =>
+      setRowMenu((current) => (current === id ? null : id)),
   };
 }

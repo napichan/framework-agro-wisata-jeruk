@@ -13,10 +13,12 @@ const TOKEN_KEY = "agro_token";
 // Kalau NEXT_PUBLIC_API_URL belum diisi, pakai login dummy
 const USE_DUMMY = !process.env.NEXT_PUBLIC_API_URL;
 
+// Jalankan request login ke backend, termasuk memetakan pesan
+// error dari backend (network gagal / API down / kredensial salah).
 async function authenticate(
   email: string,
   password: string
-): Promise<LoginResponse | null> {
+): Promise<LoginResponse> {
   if (USE_DUMMY) {
     if (email === "admin@agrowisata.com" && password === "admin123") {
       return {
@@ -24,13 +26,23 @@ async function authenticate(
         user: { id: 1, nama: "Admin Utama", email, role: "admin" },
       };
     }
-    return null;
+    throw new Error("Email atau password salah");
   }
 
   try {
     return await loginRequest({ email, password });
-  } catch {
-    return null;
+  } catch (error) {
+    // fetch gagal total (backend mati / DCONN refused)
+    if (error instanceof TypeError) {
+      throw new Error(
+        "Tidak dapat terhubung ke server. Pastikan backend berjalan."
+      );
+    }
+
+    // Pesan error sudah rapi dari apiFetch / loginRequest
+    throw error instanceof Error
+      ? error
+      : new Error("Login gagal. Coba lagi nanti.");
   }
 }
 
@@ -46,19 +58,40 @@ export async function login(
     return { error: "Email dan password wajib diisi", email };
   }
 
-  const data = await authenticate(email, password);
+  try {
+    const data = await authenticate(email, password);
 
-  if (!data || data.user.role !== "admin") {
-    return { error: "Email atau password salah", email };
+    if (data.user.role !== "admin") {
+      return { error: "Akun ini tidak memiliki akses admin", email };
+    }
+
+    const store = await cookies();
+    store.set(TOKEN_KEY, data.token, {
+      path: "/",
+      sameSite: "lax",
+      // dicentang "ingat saya" = 7 hari, kalau nggak = hilang saat browser ditutup
+      maxAge: remember ? 60 * 60 * 24 * 7 : undefined,
+    });
+
+    redirect("/admin");
+  } catch (error) {
+    // redirect() melempar error khusus NEXT_REDIRECT, harus di-rethrow
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest?: string }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Login gagal. Coba lagi nanti.",
+      email,
+    };
   }
-
-  const store = await cookies();
-  store.set(TOKEN_KEY, data.token, {
-    path: "/",
-    sameSite: "lax",
-    // dicentang "ingat saya" = 7 hari, kalau nggak = hilang saat browser ditutup
-    maxAge: remember ? 60 * 60 * 24 * 7 : undefined,
-  });
-
-  redirect("/admin");
 }

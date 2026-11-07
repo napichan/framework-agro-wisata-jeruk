@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type {
   ChartMode,
   ChartSeries,
@@ -10,18 +11,7 @@ import type {
   ReportTx,
 } from "@/types/report.types";
 
-/**
- * Data demo Laporan.
- * Angka dirancang agar cocok dengan design Figma:
- * - Total transaksi : 184
- * - Total pendapatan: Rp 14.850.000 (dari seluruh transaksi)
- * - Terverifikasi   : 168 (91,3%)
- * - Ditolak / Batal : 15 (8,2%) + 1 Pending = 184
- *
- * Untuk produksi: ganti dengan panggilan API (apiFetch dari @/lib/api).
- */
-
-const PAGE_SIZE = 6; // sesuai design: "Menampilkan 1-6 dari 184 transaksi"
+const PAGE_SIZE = 6; // sesuai design: "Menampilkan 1-6 dari ..."
 
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -30,199 +20,26 @@ const MONTH_ABBR = [
 
 /** "2024-10-28" -> "28 Okt 2024" (deterministik, aman untuk SSR/CSR). */
 export function formatDate(iso: string): string {
-  const [year, month, day] = iso.split("-");
+  const [year, month, day] = iso.slice(0, 10).split("-");
   return `${Number(day)} ${MONTH_ABBR[Number(month) - 1]} ${year}`;
 }
 
 export const rupiah = (value: number) => `Rp ${value.toLocaleString("id-ID")}`;
 
-/* ==================== 6 baris pertama (persis design) ==================== */
+const pad = (value: number) => String(value).padStart(2, "0");
 
-const FEATURED: ReportTx[] = [
-  {
-    id: "#TRX-1824",
-    user: "Budi Hartono",
-    paket: "Paket Keluarga 5 Pax",
-    date: "2024-10-28",
-    nominal: 450_000,
-    status: "Terverifikasi",
-  },
-  {
-    id: "#TRX-1823",
-    user: "Siti Aminah",
-    paket: "Petik Sendiri 3kg Jeruk",
-    date: "2024-10-28",
-    nominal: 225_000,
-    status: "Terverifikasi",
-  },
-  {
-    id: "#TRX-1822",
-    user: "Yayasan Insan Cita",
-    paket: "Paket Edukasi 35 Pax",
-    date: "2024-10-27",
-    nominal: 2_425_000,
-    status: "Terverifikasi",
-  },
-  {
-    id: "#TRX-1821",
-    user: "Denny Sumargo",
-    paket: "Tiket Masuk Weekend 40 Pax",
-    date: "2024-10-27",
-    nominal: 180_000,
-    status: "Pending",
-  },
-  {
-    id: "#TRX-1820",
-    user: "Hendri Kurniawan",
-    paket: "Petik Jeruk 2 Orang",
-    date: "2024-10-26",
-    nominal: 90_000,
-    status: "Ditolak",
-  },
-  {
-    id: "#TRX-1819",
-    user: "Dimas Lestari",
-    paket: "Paket VIP Kebun Siang",
-    date: "2024-10-25",
-    nominal: 350_000,
-    status: "Terverifikasi",
-  },
-];
-
-/* ==================== Pool generate ==================== */
-
-const FIRST_NAMES = [
-  "Agus", "Dewi", "Fajar", "Rizky", "Putri", "Bayu", "Intan", "Yoga",
-  "Lestari", "Hendra", "Melati", "Arif", "Citra", "Dimas", "Rina", "Taufik",
-  "Wulan", "Ilham", "Vina", "Galih", "Anisa", "Reza", "Fitri", "Bagus",
-];
-
-const LAST_NAMES = [
-  "Wijaya", "Saputra", "Permata", "Hidayat", "Nugroho", "Susanto",
-  "Anggraini", "Kusuma", "Firmansyah", "Ramadhan", "Oktaviani", "Sanjaya",
-];
-
-const PAKETS = [
-  "Tiket Masuk Reguler 2 Tiket",
-  "Tiket Masuk Reguler 4 Tiket",
-  "Petik Jeruk 2 Orang",
-  "Paket Keluarga 5 Pax",
-  "Petik Sendiri 3kg Jeruk",
-  "Paket VIP Kebun Siang",
-  "Tiket Masuk Weekend 40 Pax",
-];
-
-/** Target total pendapatan (sesuai design). */
-const REVENUE_TARGET = 14_850_000;
-const FEATURED_SUM = FEATURED.reduce((total, tx) => total + tx.nominal, 0);
-
-/**
- * Nominal tiket/paket kecil — mayoritas transaksi adalah penjualan tiket.
- * 177 nilai pertama dari pool, 1 nilai terakhir diseimbangkan
- * agar total pendapatan tepat Rp 14.850.000.
- */
-const NOMINAL_POOL = [
-  35_000, 40_000, 45_000, 50_000, 55_000, 60_000, 65_000, 70_000,
-  75_000, 85_000, 95_000,
-];
-
-function sum(values: number[]): number {
-  return values.reduce((total, value) => total + value, 0);
+function toIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-const GENERATED_COUNT = 178; // 184 - 6 baris design
-
-function buildGenerated(): ReportTx[] {
-  const firstCount = GENERATED_COUNT - 1;
-
-  // 177 nominal dari pool + 1 penyeimbang
-  const nominals = Array.from(
-    { length: firstCount },
-    (_, i) => NOMINAL_POOL[i % NOMINAL_POOL.length],
-  );
-  nominals.push(REVENUE_TARGET - FEATURED_SUM - sum(nominals));
-
-  const lastNominal = nominals[nominals.length - 1];
-  if (lastNominal < 20_000 || lastNominal > 500_000) {
-    throw new Error(`Nominal penyeimbang tidak wajar: ${lastNominal}`);
-  }
-
-  return Array.from({ length: GENERATED_COUNT }, (_, i) => {
-    const first = FIRST_NAMES[i % FIRST_NAMES.length];
-    const last =
-      LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
-    const day = 24 - (i % 24); // 24 Okt s.d. 01 Okt, berulang
-
-    return {
-      id: `#TRX-${1818 - i}`,
-      user: `${first} ${last}`,
-      paket: PAKETS[i % PAKETS.length],
-      date: `2024-10-${String(day).padStart(2, "0")}`,
-      nominal: nominals[i],
-      // 14 ditolak (i = 5, 18, 31, ... 174), sisanya terverifikasi
-      status: (i % 13 === 5 ? "Ditolak" : "Terverifikasi") as ReportStatus,
-    };
+/** 28 tanggal terakhir sampai hari ini, terbaru di depan. */
+function buildDateOptions(): string[] {
+  const today = new Date();
+  return Array.from({ length: 28 }, (_, i) => {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    return toIsoDate(date);
   });
 }
-
-const REPORT_TX: ReportTx[] = [...FEATURED, ...buildGenerated()];
-
-/* ==================== Statistik ==================== */
-
-function computeReportStats(txs: ReportTx[]): ReportStats {
-  const total = txs.length;
-  const verified = txs.filter((tx) => tx.status === "Terverifikasi").length;
-  const rejected = txs.filter((tx) => tx.status === "Ditolak").length;
-  const pending = txs.filter((tx) => tx.status === "Pending").length;
-  const verifiedRatio = total === 0 ? 0 : (verified / total) * 100;
-  const rejectedRatio = total === 0 ? 0 : (rejected / total) * 100;
-
-  return {
-    total,
-    revenue: txs.reduce((acc, tx) => acc + tx.nominal, 0),
-    verifiedCount: verified,
-    verifiedRatio,
-    verifiedText: verifiedRatio.toFixed(1).replace(".", ","),
-    rejectedCount: rejected,
-    rejectedRatio,
-    rejectedText: rejectedRatio.toFixed(1).replace(".", ","),
-    pendingCount: pending,
-  };
-}
-
-/* ==================== Data grafik ==================== */
-
-/**
- * Ketiga seri menjumlah tepat Rp 14.850.000 (periode berjalan).
- */
-export const CHART_SERIES: Record<ChartMode, ChartSeries> = {
-  bulanan: {
-    labels: ["Mei", "Jun", "Jul", "Agu", "Sep", "Okt (Aktif)"],
-    values: [
-      8_650_000, 9_400_000, 10_750_000, 11_300_000, 12_950_000, 14_850_000,
-    ],
-    activeIndex: 5,
-  },
-  mingguan: {
-    labels: ["Mgg 1", "Mgg 2", "Mgg 3", "Mgg 4", "Mgg 5"],
-    values: [3_200_000, 3_450_000, 3_600_000, 3_150_000, 1_450_000],
-    activeIndex: 4,
-  },
-  harian: {
-    labels: ["22 Okt", "23 Okt", "24 Okt", "25 Okt", "26 Okt", "27 Okt", "28 Okt"],
-    values: [
-      1_850_000, 2_100_000, 1_950_000, 2_400_000, 2_250_000, 2_650_000,
-      1_650_000,
-    ],
-    activeIndex: 6,
-  },
-};
-
-/** Daftar tanggal untuk filter tanggal (28 Okt s.d. 1 Okt 2024). */
-const DATE_OPTIONS: string[] = Array.from(
-  { length: 28 },
-  (_, i) => `2024-10-${String(28 - i).padStart(2, "0")}`,
-);
 
 const STATUS_OPTIONS: ReportStatusFilter[] = [
   "Semua Status",
@@ -231,36 +48,176 @@ const STATUS_OPTIONS: ReportStatusFilter[] = [
   "Ditolak",
 ];
 
-/* ==================== Export ==================== */
+/* ==================== Tipe respons backend ==================== */
 
-function download(filename: string, content: string, mime: string) {
-  const blob = new Blob([`\uFEFF${content}`], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+type ApiTransaction = {
+  payment_id: number;
+  booking_code: string;
+  customer_name: string;
+  customer_email: string;
+  package_name: string;
+  visit_date: string;
+  visitor_count: number;
+  payment_method: string;
+  amount: string;
+  payment_status: "pending" | "verified" | "rejected";
+  rejection_reason: string | null;
+  payment_created_at: string;
+};
+
+type ReportsResponse = {
+  period: { from: string | null; to: string | null };
+  summary: {
+    payments: {
+      total_payments: number;
+      pending_payments: number;
+      verified_payments: number;
+      rejected_payments: number;
+      verified_revenue: string;
+    };
+  };
+  total_transactions: number;
+  transactions: ApiTransaction[];
+};
+
+const STATUS_MAP: Record<ApiTransaction["payment_status"], ReportStatus> = {
+  pending: "Pending",
+  verified: "Terverifikasi",
+  rejected: "Ditolak",
+};
+
+function mapTransaction(row: ApiTransaction): ReportTx {
+  return {
+    id: `#${row.booking_code}`,
+    user: row.customer_name,
+    paket: row.package_name,
+    date: row.payment_created_at.slice(0, 10),
+    nominal: Number(row.amount),
+    status: STATUS_MAP[row.payment_status],
+  };
+}
+
+function sum(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+/* ==================== Grafik dari data transaksi ==================== */
+
+/** Seri pendapatan terverifikasi per hari/bulan pada tanggal `endDate`. */
+function buildChartSeries(txs: ReportTx[], endDate: string): Record<ChartMode, ChartSeries> {
+  const verified = txs.filter((tx) => tx.status === "Terverifikasi");
+  const end = new Date(`${endDate}T00:00:00.000`);
+
+  // Bulanan: 6 bulan terakhir sampai tanggal akhir.
+  const monthLabels: string[] = [];
+  const monthValues: number[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(end.getFullYear(), end.getMonth() - i, 1);
+    const key = `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+    monthLabels.push(MONTH_ABBR[date.getMonth()]);
+    monthValues.push(sum(verified.filter((tx) => tx.date.slice(0, 7) === key).map((tx) => tx.nominal)));
+  }
+
+  // Harian: 7 hari terakhir sampai tanggal akhir.
+  const dayLabels: string[] = [];
+  const dayValues: number[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(end.getFullYear(), end.getMonth(), end.getDate() - i);
+    const key = toIsoDate(date);
+    dayLabels.push(`${date.getDate()} ${MONTH_ABBR[date.getMonth()]}`);
+    dayValues.push(sum(verified.filter((tx) => tx.date === key).map((tx) => tx.nominal)));
+  }
+
+  // Mingguan: 5 pekan (Senin-Minggu) yang berakhir pada pekan tanggal akhir.
+  const dayOfWeek = (end.getDay() + 6) % 7; // 0 = Senin
+  const endMonday = new Date(end.getFullYear(), end.getMonth(), end.getDate() - dayOfWeek);
+  const weekLabels: string[] = [];
+  const weekValues: number[] = [];
+  for (let i = 4; i >= 0; i--) {
+    const monday = new Date(endMonday.getFullYear(), endMonday.getMonth(), endMonday.getDate() - i * 7);
+    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+    const from = toIsoDate(monday);
+    const to = toIsoDate(sunday);
+    weekLabels.push(`Mgg ${5 - i}`);
+    weekValues.push(sum(verified.filter((tx) => tx.date >= from && tx.date <= to).map((tx) => tx.nominal)));
+  }
+
+  return {
+    bulanan: { labels: monthLabels, values: monthValues, activeIndex: monthLabels.length - 1 },
+    mingguan: { labels: weekLabels, values: weekValues, activeIndex: weekLabels.length - 1 },
+    harian: { labels: dayLabels, values: dayValues, activeIndex: dayLabels.length - 1 },
+  };
+}
+
+/* ==================== Helper ==================== */
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
 }
 
 /* ==================== Hook ==================== */
 
 export function useReports() {
-  const [date, setDate] = useState(DATE_OPTIONS[0]);
+  const dateOptions = useMemo(() => buildDateOptions(), []);
+  const [date, setDate] = useState(dateOptions[0]);
   const [status, setStatus] = useState<ReportStatusFilter>("Semua Status");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
 
-  /** Data sesuai filter tanggal & status (dipakai kartu + tabel). */
-  const scoped = useMemo(() => {
-    return REPORT_TX.filter((tx) => {
-      const matchDate = tx.date <= date;
-      const matchStatus = status === "Semua Status" || tx.status === status;
-      return matchDate && matchStatus;
-    });
-  }, [date, status]);
+  const [transactions, setTransactions] = useState<ReportTx[]>([]);
+  const [summary, setSummary] = useState<ReportsResponse["summary"]["payments"] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const stats = useMemo(() => computeReportStats(scoped), [scoped]);
+  const load = useCallback(async (until: string) => {
+    setError(null);
+
+    try {
+      const res = await apiFetch<ReportsResponse>(
+        `/api/admin/reports?to=${encodeURIComponent(until)}`,
+      );
+
+      setTransactions(res.transactions.map(mapTransaction));
+      setSummary(res.summary.payments);
+    } catch (err) {
+      setError(errorMessage(err, "Gagal memuat laporan."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(date);
+  }, [date, load]);
+
+  const stats: ReportStats = useMemo(() => {
+    const total = summary?.total_payments ?? 0;
+    const verifiedCount = summary?.verified_payments ?? 0;
+    const rejectedCount = summary?.rejected_payments ?? 0;
+    const pendingCount = summary?.pending_payments ?? 0;
+    const verifiedRatio = total === 0 ? 0 : (verifiedCount / total) * 100;
+    const rejectedRatio = total === 0 ? 0 : (rejectedCount / total) * 100;
+
+    return {
+      total,
+      revenue: Number(summary?.verified_revenue ?? 0),
+      verifiedCount,
+      verifiedRatio,
+      verifiedText: verifiedRatio.toFixed(1).replace(".", ","),
+      rejectedCount,
+      rejectedRatio,
+      rejectedText: rejectedRatio.toFixed(1).replace(".", ","),
+      pendingCount,
+    };
+  }, [summary]);
+
+  const chartSeries = useMemo(() => buildChartSeries(transactions, date), [transactions, date]);
+
+  const scoped = useMemo(() => {
+    return transactions.filter(
+      (tx) => status === "Semua Status" || tx.status === status,
+    );
+  }, [transactions, status]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -294,6 +251,7 @@ export function useReports() {
   function changeDate(value: string) {
     setDate(value);
     setPage(1);
+    setLoading(true);
   }
 
   function changeStatus(value: ReportStatusFilter) {
@@ -357,6 +315,10 @@ th{background:#fafafa}
   }
 
   return {
+    // status muat
+    loading,
+    error,
+
     // filter
     date,
     status,
@@ -364,11 +326,12 @@ th{background:#fafafa}
     changeDate,
     changeStatus,
     changeQuery,
-    dateOptions: DATE_OPTIONS,
+    dateOptions,
     statusOptions: STATUS_OPTIONS,
 
     // data
     stats,
+    chartSeries,
     visible,
     totalFiltered: filtered.length,
 
@@ -384,4 +347,14 @@ th{background:#fafafa}
     exportCsv,
     exportPdf,
   };
+}
+
+function download(filename: string, content: string, mime: string) {
+  const blob = new Blob([`\uFEFF${content}`], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }

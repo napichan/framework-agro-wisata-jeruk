@@ -1,4 +1,4 @@
-import { IconScan, IconTicket, IconWallet } from "./icons";
+import { IconScan, IconTicket, IconWallet } from "@/components/ui/icons";
 
 const FEATURES = [
   {

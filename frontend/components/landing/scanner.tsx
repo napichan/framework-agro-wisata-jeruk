@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { IconChevronRight } from "./icons";
+import { IconChevronRight } from "@/components/ui/icons";
 
 export function ScannerSection() {
   return (

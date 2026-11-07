@@ -8,7 +8,7 @@ import {
   IconWhatsApp,
   IconYoutube,
   LogoMark,
-} from "./icons";
+} from "@/components/ui/icons";
 
 export function ReservationCta() {
   return (

@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type {
   ActivityLog,
   DashboardStat,
@@ -8,83 +10,190 @@ import type {
   RevenuePoint,
 } from "@/types/dashboard.types";
 
-const stats: DashboardStat[] = [
-  {
-    label: "Total User",
-    value: "248",
-    delta: "+ 12%",
-    icon: "users",
-    iconClass: "bg-grove-100 text-grove-600",
-  },
-  {
-    label: "Total Transaksi",
-    value: "156",
-    delta: "+ 8%",
-    icon: "receipt",
-    iconClass: "bg-brand-100 text-brand-600",
-  },
-  {
-    label: "Pendapatan",
-    value: "Rp 12.450.000",
-    delta: "+ 16%",
-    icon: "dollar",
-    iconClass: "bg-grove-100 text-grove-700",
-  },
-  {
-    label: "Pembayaran Pending",
-    value: "18",
-    delta: "+ 5%",
-    icon: "clock",
-    iconClass: "bg-amber-100 text-amber-600",
-  },
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
 
-const paymentStatus: PaymentStatusItem[] = [
-  { label: "Terverifikasi", value: 128, color: "#3D8B48" },
-  { label: "Pending", value: 18, color: "#F5A524" },
-  { label: "Ditolak", value: 10, color: "#EF4444" },
-];
+export const formatRupiah = (value: number) =>
+  `Rp${value.toLocaleString("id-ID")}`;
 
-const transactions: DashboardTransaction[] = [
-  { id: "#001", name: "Dinda", paket: "Paket A", date: "28 Sep 2026", total: 150000, status: "Lunas" },
-  { id: "#002", name: "Raka", paket: "Paket B", date: "27 Sep 2026", total: 250000, status: "Pending" },
-  { id: "#003", name: "Budi Santoso", paket: "Petik Jeruk Sepuasnya", date: "27 Sep 2026", total: 350000, status: "Lunas" },
-  { id: "#004", name: "Siti Rahmawati", paket: "Paket Edukasi", date: "26 Sep 2026", total: 400000, status: "Lunas" },
-];
+/** "2024-10-28T09:15:00.000Z" -> "28 Okt 2024" (deterministik, aman untuk SSR/CSR). */
+export function formatDateID(iso: string): string {
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  return `${Number(day)} ${MONTH_ABBR[Number(month) - 1]} ${year}`;
+}
 
-const revenue: RevenuePoint[] = [
-  { bulan: "Mei", nilai: 6200000 },
-  { bulan: "Jun", nilai: 7800000 },
-  { bulan: "Jul", nilai: 9100000 },
-  { bulan: "Agu", nilai: 8400000 },
-  { bulan: "Sep", nilai: 10900000 },
-  { bulan: "Okt", nilai: 12450000 },
-];
+type DashboardApiResponse = {
+  data: {
+    totalUsers: number;
+    totalPackages: number;
+    totalBookings: number;
+    bookings: {
+      pending: number;
+      confirmed: number;
+      cancelled: number;
+    };
+    totalPayments: number;
+    payments: {
+      pending: number;
+      verified: number;
+      rejected: number;
+    };
+    verifiedRevenue: string;
+    recentTransactions: Array<{
+      booking_code: string;
+      package_name: string;
+      visit_date: string;
+      total_amount: string;
+      payment_status: "pending" | "verified" | "rejected" | null;
+      customer_name: string;
+    }>;
+    monthlyRevenue: Array<{
+      month: string;
+      total: string;
+    }>;
+  };
+};
 
-const activityLog: ActivityLog[] = [
-  { at: "26 Okt 2026, 08.15", email: "admin@agrowisata.com", status: "berhasil", ip: "182.253.10.4", ua: "Chrome 141 / Windows 11" },
-  { at: "25 Okt 2026, 19.40", email: "admin@agrowisata.com", status: "gagal", ip: "182.253.10.4", ua: "Chrome 141 / Windows 11" },
-  { at: "25 Okt 2026, 09.02", email: "rina@agrowisata.com", status: "berhasil", ip: "114.122.7.31", ua: "Safari / iPhone" },
-];
+type LoginActivityResponse = {
+  data: Array<{
+    created_at: string;
+    email: string;
+  }>;
+};
 
-function formatRupiah(value: number) {
-  return `Rp${value.toLocaleString("id-ID")}`;
+function toIso(at: string | Date): string {
+  return (at instanceof Date ? at : new Date(at)).toISOString();
 }
 
 export function useDashboard() {
-  const totalTransaksi = paymentStatus.reduce(
-    (sum, item) => sum + item.value,
-    0
-  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<DashboardStat[]>([]);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusItem[]>([]);
+  const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
+  const [revenue, setRevenue] = useState<RevenuePoint[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [dashboard, loginActivity] = await Promise.all([
+        apiFetch<DashboardApiResponse>("/api/admin/dashboard"),
+        apiFetch<LoginActivityResponse>("/api/admin/login-activity").catch(
+          () => null,
+        ),
+      ]);
+
+      const d = dashboard.data;
+      const revenueValue = Number(d.verifiedRevenue ?? 0);
+
+      setStats([
+        {
+          label: "Total User",
+          value: String(d.totalUsers),
+          delta: "",
+          icon: "users",
+          iconClass: "bg-grove-100 text-grove-600",
+        },
+        {
+          label: "Total Transaksi",
+          value: String(d.totalBookings),
+          delta: "",
+          icon: "receipt",
+          iconClass: "bg-brand-100 text-brand-600",
+        },
+        {
+          label: "Pendapatan",
+          value: formatRupiah(revenueValue),
+          delta: "",
+          icon: "dollar",
+          iconClass: "bg-grove-100 text-grove-700",
+        },
+        {
+          label: "Pembayaran Pending",
+          value: String(d.payments.pending),
+          delta: "",
+          icon: "clock",
+          iconClass: "bg-amber-100 text-amber-600",
+        },
+      ]);
+
+      setPaymentStatus([
+        { label: "Terverifikasi", value: d.payments.verified, color: "#3D8B48" },
+        { label: "Pending", value: d.payments.pending, color: "#F5A524" },
+        { label: "Ditolak", value: d.payments.rejected, color: "#EF4444" },
+      ]);
+
+      setTransactions(
+        d.recentTransactions.map((tx) => ({
+          id: tx.booking_code,
+          name: tx.customer_name,
+          paket: tx.package_name,
+          date: formatDateID(toIso(tx.visit_date)),
+          total: Number(tx.total_amount),
+          status: tx.payment_status === "verified" ? "Lunas" : "Pending",
+        })),
+      );
+
+      // Isi 6 bulan terakhir; bulan tanpa pendapatan bernilai 0.
+      const monthlyMap = new Map(
+        d.monthlyRevenue.map((item) => [item.month, Number(item.total)]),
+      );
+      const now = new Date();
+      const revenuePoints: RevenuePoint[] = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+        revenuePoints.push({
+          bulan: MONTH_ABBR[date.getMonth()],
+          nilai: monthlyMap.get(key) ?? 0,
+        });
+      }
+
+      setRevenue(revenuePoints);
+
+      setActivityLog(
+        (loginActivity?.data ?? []).map((session) => {
+          const iso = toIso(session.created_at);
+
+          return {
+            at: `${formatDateID(iso)}, ${iso.slice(11, 16).replace(":", ".")}`,
+            email: session.email,
+            status: "berhasil" as const,
+            ip: "-",
+            ua: "-",
+          };
+        }),
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Gagal memuat data dashboard.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return {
     displayName: "Admin",
+    loading,
+    error,
     stats,
     paymentStatus,
-    totalTransaksi,
     transactions,
     revenue,
     activityLog,
     formatRupiah,
+    reload: load,
   };
 }

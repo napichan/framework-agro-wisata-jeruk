@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "./icons";
+import { LogoMark } from "@/components/ui/icons";
 
 export function TopBar() {
   return (

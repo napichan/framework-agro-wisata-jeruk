@@ -2,7 +2,7 @@ import {
   IconLocation,
   IconWalk,
   MapIllustration,
-} from "./icons";
+} from "@/components/ui/icons";
 
 const ROUTES = [
   {

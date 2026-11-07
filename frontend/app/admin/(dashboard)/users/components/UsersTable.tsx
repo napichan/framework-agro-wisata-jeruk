@@ -32,6 +32,8 @@ function avatarColor(id: string): string {
 
 export default function UsersTable() {
   const {
+    loading,
+    error,
     search,
     role,
     status,
@@ -242,8 +244,9 @@ export default function UsersTable() {
                   <td
                     colSpan={7}
                     className="px-5 py-14 text-center text-sm text-neutral-400"
-                  >
-                    Tidak ada pengguna yang cocok dengan pencarianmu.
+                  >                    {loading
+                      ? "Memuat data pengguna..."
+                      : error ?? "Tidak ada pengguna yang cocok dengan pencarianmu."}
                   </td>
                 </tr>
               )}

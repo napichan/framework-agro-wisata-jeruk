@@ -122,7 +122,6 @@ export default function UserModal({
                   className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-grove-500 focus:ring-2 focus:ring-grove-500/20"
                 >
                   <option>User</option>
-                  <option>Staf Kebun</option>
                   <option>Admin</option>
                 </select>
               </div>

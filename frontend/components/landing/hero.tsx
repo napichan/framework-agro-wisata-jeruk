@@ -3,7 +3,7 @@ import {
   AppleBadge,
   GooglePlayBadge,
   IconStar,
-} from "./icons";
+} from "@/components/ui/icons";
 
 export function Hero() {
   return (

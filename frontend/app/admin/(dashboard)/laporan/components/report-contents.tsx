@@ -49,6 +49,8 @@ type StatCard = {
 
 export default function ReportContents() {
   const {
+    loading,
+    error,
     date,
     status,
     query,
@@ -58,6 +60,7 @@ export default function ReportContents() {
     dateOptions,
     statusOptions,
     stats,
+    chartSeries,
     visible,
     totalFiltered,
     from,
@@ -230,7 +233,7 @@ export default function ReportContents() {
       </section>
 
       {/* ================= GRAFIK ================= */}
-      <ReportChart />
+      <ReportChart series={chartSeries} />
 
       {/* ================= RIWAYAT TRANSAKSI ================= */}
       <section className="rounded-2xl bg-white shadow-sm ring-1 ring-neutral-200/70">
@@ -326,7 +329,9 @@ export default function ReportContents() {
                     colSpan={6}
                     className="px-5 py-14 text-center text-sm text-neutral-400"
                   >
-                    Tidak ada transaksi yang cocok dengan pencarianmu.
+                    {loading
+                      ? "Memuat laporan..."
+                      : error ?? "Tidak ada transaksi yang cocok dengan pencarianmu."}
                   </td>
                 </tr>
               )}

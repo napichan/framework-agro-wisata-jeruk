@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { IconCheck, IconChevronRight } from "./icons";
+import { IconCheck, IconChevronRight } from "@/components/ui/icons";
 
 type Package = {
   id: string;
