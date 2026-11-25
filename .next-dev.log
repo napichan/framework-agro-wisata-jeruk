@@ -1,0 +1,32 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.4.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env.local
+✓ Ready in 1217ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of D:\Framework\framework-agro-wisata-jeruk\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * D:\Framework\framework-agro-wisata-jeruk\frontend\package-lock.json
+
+✓ Running next.config.ts took 89ms
+
+ GET /admin/login 200 in 3.5s (next.js: 3.0s, proxy.ts: 145ms, application-code: 436ms)
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\D:\\Framework\\framework-agro-wisata-jeruk\\frontend\\node_modules\\zod\\v4\\mini\\external.cjs").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\D:\\Framework\\framework-agro-wisata-jeruk\\frontend\\node_modules\\zod\\v4\\mini\\schemas.js").
+ GET /admin 200 in 1137ms (next.js: 831ms, proxy.ts: 17ms, application-code: 289ms)
+ GET /admin/pembayaran 200 in 787ms (next.js: 697ms, proxy.ts: 11ms, application-code: 79ms)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET /admin/pemesanan 200 in 482ms (next.js: 401ms, proxy.ts: 7ms, application-code: 75ms)
+ GET /admin/tiket 200 in 504ms (next.js: 409ms, proxy.ts: 15ms, application-code: 79ms)
+ GET /admin/users 200 in 468ms (next.js: 378ms, proxy.ts: 10ms, application-code: 81ms)
+ GET /admin/laporan 200 in 1704ms (next.js: 1624ms, proxy.ts: 8ms, application-code: 72ms)
+ GET /admin 200 in 158ms (next.js: 101ms, proxy.ts: 9ms, application-code: 48ms)
+ GET /admin/pembayaran 200 in 160ms (next.js: 98ms, proxy.ts: 8ms, application-code: 54ms)
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\D:\\Framework\\framework-agro-wisata-jeruk\\frontend\\node_modules\\next\\dist\\compiled\\postcss-flexbugs-fixes").
+ GET /admin/login 200 in 214ms (next.js: 61ms, proxy.ts: 13ms, application-code: 140ms)
